@@ -27,6 +27,27 @@ Un telefono fa da **regista**: crea la partita, sceglie il gioco e fa partire tu
 - Server: Cloudflare Workers + Durable Objects (piano gratuito), WebSocket con ibernazione.
 - Nessun database, nessun account.
 
+## Provare dal telefono (milestone 1, nessun server)
+
+Serve Node 22 o superiore.
+
+```sh
+npm install
+npm run dev        # server HTTPS con certificato locale, anche sulla rete Wi-Fi
+npm run check      # controllo della logica (quaternioni, bersagli, record)
+```
+
+Fotocamera e sensori funzionano solo in HTTPS. Due modi per aprire l'app dal telefono:
+
+1. **Tunnel HTTPS (consigliato, funziona sempre)**. Installa una volta `brew install cloudflared`, poi con `npm run dev` acceso:
+   ```sh
+   cloudflared tunnel --url https://localhost:5173 --no-tls-verify
+   ```
+   Apri sul telefono l'indirizzo `https://...trycloudflare.com` che compare.
+2. **Stessa rete Wi-Fi**: apri l'indirizzo `Network` stampato da `npm run dev` (per esempio `https://192.168.1.20:5173`) e accetta l'avviso sul certificato.
+
+Per provare la PWA e il funzionamento senza rete usa la build: `npm run build && npm run preview`, poi lo stesso tunnel sulla porta 4173. Su iPhone: Condividi, Aggiungi alla schermata Home, e apri il gioco dall'icona (schermo intero e orizzontale).
+
 ## Come partire
 
 1. Apri questa cartella con Claude Code.
