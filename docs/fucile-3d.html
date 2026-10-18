@@ -1,0 +1,671 @@
+<title>Fucile di cartone 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: banco da lavoro. Viewer grande a sinistra, elenco dei pezzi a destra (sotto, su telefono). */
+:root {
+  --bg: #eef0ea;
+  --panel: #ffffff;
+  --fg: #22262a;
+  --muted: #5d646b;
+  --line: #d6dad1;
+  --kraft: #a8753f;
+  --kraft-soft: #f3e6d4;
+  --mat: #3d7a60;
+  --viewer: #e3e7df;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1c1b; --panel: #242725; --fg: #eceee8; --muted: #a6ada6; --line: #363a37;
+    --kraft: #d6a56c; --kraft-soft: #3a2f22; --mat: #2f5f4b; --viewer: #202422; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1c1b; --panel: #242725; --fg: #eceee8; --muted: #a6ada6; --line: #363a37;
+  --kraft: #d6a56c; --kraft-soft: #3a2f22; --mat: #2f5f4b; --viewer: #202422; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 28px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: grid; gap: 4px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4vw, 38px); line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.viewer { position: relative; background: var(--viewer); border-radius: 14px; overflow: hidden; height: min(72vh, 660px); min-height: 380px; border: 1px solid var(--line); }
+.viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hint { position: absolute; top: 12px; left: 12px; right: 12px; font-size: 13px; color: var(--muted); pointer-events: none; }
+.toolbar { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+button { font: inherit; cursor: pointer; }
+.seg button, .tog { border: 0; background: transparent; color: var(--fg); padding: 6px 12px; border-radius: 999px; font-size: 14px; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--panel); }
+.tog { background: var(--panel); border: 1px solid var(--line); }
+.tog[aria-pressed="true"] { border-color: var(--kraft); background: var(--kraft-soft); }
+.fire { margin-left: auto; border: 0; background: var(--kraft); color: #fff; font-weight: 700; padding: 10px 18px; border-radius: 999px; font-size: 15px; box-shadow: 0 2px 0 rgba(0,0,0,.18); }
+.fire:active { transform: translateY(1px); }
+button:focus-visible { outline: 3px solid var(--mat); outline-offset: 2px; }
+@media (max-width: 520px) { .fire { margin-left: 0; width: 100%; } }
+
+aside { display: grid; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; }
+.eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.card h2 { font-family: var(--display); font-weight: 600; font-size: 21px; margin: 0; line-height: 1.2; }
+.card p { margin: 0; }
+.tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--kraft-soft); color: var(--fg); justify-self: start; }
+.parts { list-style: none; margin: 0; padding: 4px; display: grid; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.parts button { width: 100%; text-align: left; border: 0; background: transparent; color: var(--fg); padding: 7px 10px; border-radius: 9px; display: flex; gap: 8px; align-items: baseline; }
+.parts button:hover { background: var(--bg); }
+.parts button[aria-current="true"] { background: var(--kraft-soft); }
+.parts .q { margin-left: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: none; transform: translateY(1px); }
+.phones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.phones button { border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 5px 11px; border-radius: 999px; font-size: 14px; }
+.phones button[aria-pressed="true"] { background: var(--fg); color: var(--panel); border-color: var(--fg); }
+.fit { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 6px 0 0; font-size: 14px; }
+.fit dt { color: var(--muted); }
+.fit dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ok { color: var(--mat); font-weight: 700; }
+.warn { color: #b5532b; font-weight: 700; }
+.verdict { font-size: 14px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.err { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Fucile di cartone 3D</h1>
+    <p>Ruota il modello col dito o col mouse. Tocca un pezzo per sapere a cosa serve, apri l'esploso per vedere come si incastra, e premi il grilletto per vedere la spugna toccare lo schermo.</p>
+  </header>
+
+  <div class="main">
+    <div class="viewer" id="viewer">
+      <div class="hint" id="hint">Trascina per ruotare, pizzica o usa la rotella per lo zoom.</div>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="Vista">
+          <button id="v-tre" aria-pressed="true">3/4</button>
+          <button id="v-lato" aria-pressed="false">Di lato</button>
+          <button id="v-gioc" aria-pressed="false">Come la vedi tu</button>
+        </div>
+        <button class="tog" id="t-expl" aria-pressed="false">Esploso</button>
+        <button class="tog" id="t-phone" aria-pressed="true">Telefono</button>
+        <button class="fire" id="fire">Premi il grilletto</button>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card">
+        <span class="eyebrow">Telefono nel fucile</span>
+        <div class="phones" role="group" aria-label="Telefono" id="phones"></div>
+        <dl class="fit" id="fit"></dl>
+        <p class="verdict" id="verdict"></p>
+      </div>
+      <div class="card" id="info" aria-live="polite">
+        <span class="eyebrow">Pezzo selezionato</span>
+        <h2 id="info-name">Leva del grilletto</h2>
+        <p id="info-desc"></p>
+        <span class="tag" id="info-pdf"></span>
+      </div>
+      <ul class="parts" id="parts"></ul>
+      <p class="note">Misure in millimetri come nel PDF dei template. Dimensioni dei telefoni da scheda tecnica, con una cover stimata di 1,2 mm per lato. La posizione dei moduli fotocamera è indicativa: prima di incollare gli spessori, appoggia il telefono e controlla.</p>
+    </aside>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const viewer = document.getElementById('viewer');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---------- geometria in mm, identica al PDF (x avanti, y su, z di lato) ----------
+const BODY = [[40,160],[330,160],[330,152],[380,152],[380,128],[330,128],[330,115],[172,115],[172,60],[164,52],[87.4,52],[78,5],[30,5],[55,115],[30,118],[8,128],[5,145],[15,156]];
+const HOLE = [[104,64],[160,64],[160,106],[106,106]];
+const HOLE_C = [[104,64],[160,64],[160,106],[142,106],[142,159.6],[104,159.6]];
+const LEVER = [[122,72],[126,70],[137,72],[137,77],[134,79],[137,81],[137,122],[138,130],[134,136],[124,160],[122,182],[110,182],[112,160],[121,132],[122,122]];
+const PIVOT = [130,128], ANCHOR = [166,86], STRAP = [52,22];
+
+const PARTS = {
+  fianco:    { name: 'Fianco', q: '3 strati', pdf: 'PDF pagine 2 e 3', col: '#c99a62', desc: "Tre sagome uguali incollate insieme. Lo strato centrale ha in più il vano dove scorre la leva. Ricalcale con le onde del cartone in verticale: il fucile si piega meno." },
+  leva:      { name: 'Leva del grilletto', q: '1', pdf: 'PDF pagina 4', col: '#d9a46a', desc: "Ruota sul perno. Quando tiri il grilletto, la punta va in avanti e il tampone tocca lo schermo. L'elastico la riporta indietro da sola." },
+  alluminio: { name: 'Striscia di alluminio', q: '1', pdf: 'Materiale', col: '#c9ced4', desc: "Va dal punto dove appoggi il dito fino al tampone. Porta il tocco del dito allo schermo: per questo il dito deve toccare il metallo, non il cartone." },
+  tampone:   { name: 'Tampone di spugna', q: '1', pdf: 'Materiale', col: '#e8e2b0', desc: "Un centimetro di spugna morbida avvolta nell'alluminio, senza bordi vivi. Tocca lo schermo al centro del bordo basso, tra i due labbri." },
+  mensola:   { name: 'Mensola', q: '1', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Il ripiano su cui appoggia il telefono, incollato sopra il fianco. La tacca al centro lascia passare la punta della leva." },
+  labbri:    { name: 'Labbri', q: '2', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Due listelli davanti al bordo basso del telefono. Lo tengono fermo ai lati e lasciano libero il centro, dove arriva il tampone." },
+  piastra:   { name: 'Piastra', q: '1', pdf: 'PDF pagina 4', col: '#b98c58', desc: "La parete dietro il telefono. È larga solo 60 mm e sta al centro, così le due estremità restano libere e la fotocamera vede da qualsiasi lato monti il telefono." },
+  spessori:  { name: 'Spessori', q: '1 o 2', pdf: 'PDF pagina 4', col: '#d8b98f', desc: "Quadrati di 40 mm incollati sulla piastra finché il telefono resta stretto senza forzare. Sono stretti apposta: così non toccano il modulo della fotocamera. Quanti ne servono dipende dal telefono." },
+  gancio:    { name: 'Gancio', q: '1', pdf: 'PDF pagina 4', col: '#9f7a4e', desc: "Si piega a forma di uncino e scende sul bordo alto del telefono. Un elastico dietro la piastra lo tira giù e blocca il telefono." },
+  squadrette:{ name: 'Squadrette', q: '3', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Triangoli di rinforzo: una tiene dritta la piastra, due sostengono la mensola ai lati del fianco." },
+  perno:     { name: 'Perno', q: '1 spiedino', pdf: 'Materiale', col: '#e2c79a', desc: "Uno spiedino di legno che attraversa i tre strati e la leva. Si taglia a filo dopo averlo infilato." },
+  ritorno:   { name: 'Stecchino ed elastico', q: '1 + 1', pdf: 'Materiale', col: '#d4574a', desc: "Lo stecchino attraversa il fianco davanti al vano dito. L'elastico va dallo stecchino alla tacca della leva e la fa tornare indietro." },
+  laccetto:  { name: 'Laccetto da polso', q: '1', pdf: 'Materiale', col: '#3c8a8a', desc: "Un cordino nel foro dell'impugnatura, da mettere al polso. Se il fucile scivola di mano, il telefono non cade." },
+  telefono:  { name: 'Telefono con cover', q: '1', pdf: 'Lo metti tu', col: '#8a7fd0', desc: "In orizzontale, schermo verso di te, fotocamera posteriore a un'estremità. La cover resta sempre su." },
+};
+
+// ---------- renderer e scena ----------
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+} catch (e) {
+  viewer.insertAdjacentHTML('beforeend', '<div class="err">Questo browser non riesce a mostrare il 3D. Prova con Safari o Chrome aggiornati.</div>');
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+viewer.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 5, 6000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 150;
+controls.maxDistance = 1800;
+controls.maxPolarAngle = Math.PI * 0.62;
+
+scene.add(new THREE.HemisphereLight(0xfff6ea, 0x8a9a90, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(260, 520, 360);
+sun.target.position.set(190, 100, 0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -360, right: 360, top: 360, bottom: -360, near: 50, far: 1500 });
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+const fill = new THREE.DirectionalLight(0xdfe8ff, 0.7);
+fill.position.set(-300, 200, -300);
+scene.add(fill);
+
+// tappetino da taglio
+function matTexture() {
+  const c = document.createElement('canvas'); c.width = 1400; c.height = 920;
+  const g = c.getContext('2d');
+  g.fillStyle = '#3d7a60'; g.fillRect(0, 0, c.width, c.height);
+  for (let x = 0; x <= 700; x += 10) {
+    g.strokeStyle = x % 50 === 0 ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.12)';
+    g.lineWidth = x % 50 === 0 ? 2 : 1;
+    g.beginPath(); g.moveTo(x * 2, 0); g.lineTo(x * 2, c.height); g.stroke();
+  }
+  for (let y = 0; y <= 460; y += 10) {
+    g.strokeStyle = y % 50 === 0 ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.12)';
+    g.lineWidth = y % 50 === 0 ? 2 : 1;
+    g.beginPath(); g.moveTo(0, y * 2); g.lineTo(c.width, y * 2); g.stroke();
+  }
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.font = '600 16px sans-serif';
+  for (let x = 50; x < 700; x += 50) g.fillText(String(x / 10), x * 2 + 4, 20);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 460), new THREE.MeshStandardMaterial({ map: matTexture(), roughness: 0.95 }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(190, -42, 0);
+ground.receiveShadow = true;
+scene.add(ground);
+
+// cartone
+function kraftTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 256);
+  for (let y = 0; y < 256; y += 8) { g.fillStyle = 'rgba(120,80,40,.07)'; g.fillRect(0, y, 256, 3); }
+  for (let i = 0; i < 3000; i++) {
+    g.fillStyle = Math.random() < .5 ? 'rgba(90,60,30,.10)' : 'rgba(255,245,225,.18)';
+    g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 64, 1 / 64);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const KRAFT = kraftTexture();
+const kraft = (hex) => new THREE.MeshStandardMaterial({ color: hex, map: KRAFT, roughness: 0.93, side: THREE.DoubleSide });
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x5a3d1e, transparent: true, opacity: 0.45 });
+
+const V = (x, y) => new THREE.Vector2(x, y);
+function shape(pts, holes = []) {
+  const s = new THREE.Shape(pts.map(p => V(p[0], p[1])));
+  for (const h of holes) s.holes.push(h);
+  return s;
+}
+const poly = (pts) => new THREE.Path(pts.map(p => V(p[0], p[1])));
+const circ = (x, y, r) => new THREE.Path().absarc(x, y, r, 0, Math.PI * 2, true);
+const extrude = (sh, d) => new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false, curveSegments: 28 });
+function boxGeo(x0, x1, y0, y1, z0, z1) {
+  const g = extrude(shape([[x0, y0], [x1, y0], [x1, y1], [x0, y1]]), z1 - z0);
+  g.translate(0, 0, z0);
+  return g;
+}
+
+const gun = new THREE.Group();
+scene.add(gun);
+const pickables = [];
+const movers = [];
+
+function addMesh(key, geo, mat, parent = gun, ex = [0, 0, 0], edges = true) {
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = true; m.receiveShadow = true;
+  m.userData.part = key;
+  if (edges) {
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat);
+    e.raycast = () => {};
+    m.add(e);
+  }
+  parent.add(m);
+  pickables.push(m);
+  if (parent === gun) mover(m, ex);
+  return m;
+}
+function mover(obj, ex) {
+  obj.userData.base = obj.position.clone();
+  obj.userData.ex = new THREE.Vector3(...ex);
+  movers.push(obj);
+}
+
+// fianco: tre strati
+const strapHole = () => circ(STRAP[0], STRAP[1], 4);
+const outerShape = () => shape(BODY, [poly(HOLE), strapHole(), circ(PIVOT[0], PIVOT[1], 1.6), circ(ANCHOR[0], ANCHOR[1], 1.1)]);
+const centerShape = shape(BODY, [poly(HOLE_C), strapHole(), circ(ANCHOR[0], ANCHOR[1], 1.1)]);
+[[-6, 0xcfa06a, -55], [-2, 0xc4955e, 0], [2, 0xcfa06a, 55]].forEach(([z, col, ex], i) => {
+  const g = extrude(i === 1 ? centerShape : outerShape(), 4);
+  g.translate(0, 0, z);
+  addMesh('fianco', g, kraft(col), gun, [0, 0, ex]);
+});
+
+// leva (gruppo che ruota sul perno)
+const leverPivot = new THREE.Group();
+leverPivot.position.set(PIVOT[0], PIVOT[1], 0);
+gun.add(leverPivot);
+mover(leverPivot, [0, 0, 0]);
+{
+  const g = extrude(shape(LEVER, [circ(PIVOT[0], PIVOT[1], 1.6)]), 3.4);
+  g.translate(-PIVOT[0], -PIVOT[1], -1.7);
+  addMesh('leva', g, kraft(0xdcab72), leverPivot);
+  const foil = new THREE.MeshStandardMaterial({ color: 0xd7dce2, metalness: 0.85, roughness: 0.32 });
+  const path = new THREE.CatmullRomCurve3([[137.4, 74], [137.4, 120], [135.5, 134], [124.5, 160], [121.8, 176]]
+    .map(([x, y]) => new THREE.Vector3(x - PIVOT[0], y - PIVOT[1], 1.8)));
+  addMesh('alluminio', new THREE.TubeGeometry(path, 60, 1.1, 8, false), foil, leverPivot, undefined, false);
+  const pad = new RoundedBoxGeometry(7, 11, 12, 3, 2.5);
+  pad.translate(120.5 - PIVOT[0], 176 - PIVOT[1], 0);
+  addMesh('tampone', pad, foil.clone(), leverPivot, undefined, false);
+}
+
+// mensola, labbri, piastra, spessori
+addMesh('mensola', boxGeo(124, 144, 160, 164, -90, 90), kraft(0xc29361), gun, [0, 35, 0]);
+addMesh('labbri', boxGeo(124, 128, 164, 174, -80, -20), kraft(0xb5864f), gun, [-30, 70, -10]);
+addMesh('labbri', boxGeo(124, 128, 164, 174, 20, 80), kraft(0xb5864f), gun, [-30, 70, 10]);
+addMesh('piastra', boxGeo(144, 148, 164, 236, -30, 30), kraft(0xc6965f), gun, [55, 60, 0]);
+const spessoriGroup = new THREE.Group();
+gun.add(spessoriGroup);
+mover(spessoriGroup, [35, 95, 0]);
+const gancioGroup = new THREE.Group();
+
+// squadrette
+{
+  const tri = extrude(shape([[148, 164], [188, 160], [148, 212]]), 4);
+  tri.translate(0, 0, -2);
+  addMesh('squadrette', tri, kraft(0xbf905a), gun, [80, 40, 0]);
+  for (const side of [1, -1]) {
+    const t = extrude(shape([[0, 0], [40, 0], [0, -20]]), 4);
+    t.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 130, 0, 1, 0, 160, side, 0, 0, side * 6, 0, 0, 0, 1));
+    addMesh('squadrette', t, kraft(0xbf905a), gun, [0, 15, side * 45]);
+  }
+}
+
+// gancio
+{
+  const mat = kraft(0xa98053);
+  const g = gancioGroup; gun.add(g); mover(g, [0, 240, 0]);
+  addMesh('gancio', boxGeo(123, 125.5, 226, 238.5, -25, 25), mat, g);
+  addMesh('gancio', boxGeo(123, 153.5, 236, 238.5, -25, 25), mat, g);
+  addMesh('gancio', boxGeo(151, 153.5, 192, 238.5, -25, 25), mat, g);
+}
+
+// perno, stecchino
+const wood = new THREE.MeshStandardMaterial({ color: 0xe0c08f, roughness: 0.8 });
+{
+  const c = new THREE.CylinderGeometry(1.5, 1.5, 18, 16); c.rotateX(Math.PI / 2);
+  const m = addMesh('perno', c, wood, gun, [0, 0, 95], false); m.position.set(PIVOT[0], PIVOT[1], 0); m.userData.base = m.position.clone();
+  const s = new THREE.CylinderGeometry(1, 1, 24, 12); s.rotateX(Math.PI / 2);
+  const n = addMesh('ritorno', s, wood.clone(), gun, [0, 0, 85], false); n.position.set(ANCHOR[0], ANCHOR[1], 0); n.userData.base = n.position.clone();
+}
+
+// elastici
+const rubber = new THREE.MeshStandardMaterial({ color: 0xd4574a, roughness: 0.6 });
+const elasticRet = addMesh('ritorno', new THREE.CylinderGeometry(0.9, 0.9, 1, 8), rubber, gun, [0, 0, 0], false);
+const elasticHook = addMesh('gancio', new THREE.CylinderGeometry(0.9, 0.9, 1, 8), rubber.clone(), gun, [0, 0, 0], false);
+const UP = new THREE.Vector3(0, 1, 0);
+function stretch(mesh, a, b) {
+  const d = new THREE.Vector3().subVectors(b, a);
+  mesh.position.copy(a).addScaledVector(d, 0.5);
+  mesh.scale.set(1, d.length(), 1);
+  mesh.quaternion.setFromUnitVectors(UP, d.normalize());
+}
+
+// laccetto
+{
+  const t = new THREE.TorusGeometry(28, 1.5, 10, 64); t.rotateY(Math.PI / 2);
+  const m = addMesh('laccetto', t, new THREE.MeshStandardMaterial({ color: 0x3c8a8a, roughness: 0.7 }), gun, [0, -25, 0], false);
+  m.position.set(STRAP[0], STRAP[1] - 28, 0); m.userData.base = m.position.clone();
+}
+
+// ---------- telefono ----------
+const phone = new THREE.Group();
+gun.add(phone);
+mover(phone, [-10, 165, 0]);
+const screenCanvas = document.createElement('canvas');
+screenCanvas.width = 1160; screenCanvas.height = 536;
+const screenTex = new THREE.CanvasTexture(screenCanvas);
+screenTex.colorSpace = THREE.SRGBColorSpace;
+const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false });
+const moduleMat = new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.4, metalness: 0.4 });
+const lensMat = new THREE.MeshStandardMaterial({ color: 0x0d0f12, roughness: 0.15, metalness: 0.6 });
+const COVER = 1.2;
+// misure da scheda tecnica (mm). cam: posizione del modulo dal bordo corto (z) e dal bordo lungo superiore (y), sporgenza oltre la cover (p)
+const PHONES = {
+  i17:  { name: 'iPhone 17 Pro', L: 150.0, W: 71.9, T: 8.75, cover: 0xd9824a, sensors: 'Giroscopio: sì', gyro: true,
+          cam: { z0: 1, z1: 48, y0: 1, y1: 'full', p: 2.5, lenses: [[12, 14, 6.4], [12, 38, 6.4], [31, 26, 6.4]] } },
+  i14:  { name: 'iPhone 14 Pro', L: 147.5, W: 71.5, T: 7.85, cover: 0x7f74c9, sensors: 'Giroscopio: sì', gyro: true,
+          cam: { z0: 4, z1: 40, y0: 4, y1: 40, p: 3.5, lenses: [[13, 13, 6], [13, 31, 6], [31, 22, 6]] } },
+  a5:   { name: 'Redmi A5', L: 171.7, W: 77.8, T: 8.26, cover: 0x5b8fd6, sensors: 'Giroscopio: no, bussola sì', gyro: 'bussola',
+          cam: { z0: 8, z1: 52, y0: 7, y1: 29, p: 1.5, lenses: [[18, 18, 6], [33, 18, 4.5]] } },
+  a02s: { name: 'Galaxy A02s', L: 164.2, W: 75.9, T: 9.1, cover: 0xe4e4dc, sensors: 'Giroscopio: no, bussola no', gyro: false,
+          cam: { z0: 8, z1: 48, y0: 8, y1: 28, p: 1.2, lenses: [[16, 18, 4.8], [28, 18, 3], [38, 18, 3]] } },
+};
+function clearGroup(gr) {
+  for (const c of [...gr.children]) {
+    gr.remove(c);
+    c.traverse(o => { const i = pickables.indexOf(o); if (i >= 0) pickables.splice(i, 1); o.geometry?.dispose(); });
+  }
+}
+const fmt = n => n.toFixed(1).replace('.', ',');
+let currentPhone = null;
+function applyPhone(id) {
+  const s = PHONES[id]; currentPhone = id;
+  const L = s.L + 2 * COVER, H = s.W + 2 * COVER, T = s.T + 2 * COVER;
+  const back = 128 + T, y0 = 164, top = y0 + H, zEnd = -L / 2;
+  clearGroup(phone);
+  const body = new RoundedBoxGeometry(T, H, L, 4, Math.min(3.5, T / 2 - 0.2));
+  body.translate(128 + T / 2, y0 + H / 2, 0);
+  addMesh('telefono', body, new THREE.MeshStandardMaterial({ color: s.cover, roughness: 0.55 }), phone, undefined, false);
+  const scr = new THREE.PlaneGeometry(L - 11, H - 9);
+  scr.rotateY(-Math.PI / 2);
+  scr.translate(127.9, y0 + H / 2, 0);
+  addMesh('telefono', scr, screenMat, phone, undefined, false);
+  const c = s.cam, y1 = c.y1 === 'full' ? H - 1 : c.y1;
+  const mh = y1 - c.y0, mw = c.z1 - c.z0;
+  const mod = new RoundedBoxGeometry(c.p + 1, mh, mw, 3, Math.min(5, mh / 2 - 0.5, mw / 2 - 0.5));
+  mod.translate(back + (c.p + 1) / 2 - 1, top - (c.y0 + y1) / 2, zEnd + (c.z0 + c.z1) / 2);
+  addMesh('telefono', mod, moduleMat, phone, undefined, false);
+  for (const [dz, dy, r] of c.lenses) {
+    const l = new THREE.CylinderGeometry(r, r, 1.6, 24); l.rotateZ(Math.PI / 2);
+    l.translate(back + c.p + 0.8, top - dy, zEnd + dz);
+    addMesh('telefono', l, lensMat, phone, undefined, false);
+  }
+  // spessori: riempiono lo spazio tra il retro del telefono e la piastra (x 144), cartone da 3 mm
+  clearGroup(spessoriGroup);
+  const gap = 144 - back, n = Math.max(0, Math.round(gap / 3)), th = n ? gap / n : 0;
+  for (let i = 0; i < n; i++) {
+    addMesh('spessori', boxGeo(back + i * th, back + (i + 1) * th, 182, 222, -20, 20), kraft(i % 2 ? 0xd6b483 : 0xe0c194), spessoriGroup);
+  }
+  // il gancio segue l'altezza del telefono
+  const dy = top - 238;
+  gancioGroup.userData.base.set(0, dy, 0);
+  stretch(elasticHook, new THREE.Vector3(152, 194 + dy, 0), new THREE.Vector3(168, 184, 0));
+  elasticHook.userData.base = elasticHook.position.clone();
+  // verifica
+  const camMargin = (L / 2 - c.z1) - 20;
+  const checks = [
+    ['Lunghezza', `${fmt(L)} mm su 180`, L <= 180],
+    ['Altezza', `${fmt(H)} mm su 82`, H <= 82],
+    ['Spessore', `${fmt(T)} mm, ${n} ${n === 1 ? 'spessore' : 'spessori'} da 3 mm`, gap >= 0],
+    ['Fotocamera', camMargin >= 3 ? `libera, ${fmt(camMargin)} mm dagli spessori` : `tocca gli spessori`, camMargin >= 3],
+    ['Sensori', s.sensors, s.gyro === true ? true : s.gyro === 'bussola' ? 'mid' : false],
+  ];
+  document.getElementById('fit').innerHTML = checks.map(([k, v, ok]) =>
+    `<dt>${k}</dt><dd><span class="${ok === true ? 'ok' : 'warn'}">${ok === true ? '✓' : ok === 'mid' ? '~' : '✕'}</span> ${v}</dd>`).join('');
+  const fits = checks.slice(0, 4).every(x => x[2] === true);
+  const verdicts = {
+    true: 'Entra nel fucile. Va bene per tutti i giochi.',
+    bussola: 'Entra nel fucile. Laser tag pieno, bersagli intorno con la bussola (meno precisi) o sui muri.',
+    false: 'Entra nel fucile, ma senza giroscopio né bussola. Meglio usarlo come telefono regista.',
+  };
+  document.getElementById('verdict').textContent = fits ? verdicts[String(s.gyro)] : 'Non entra con queste misure: serve un fucile adattato.';
+  document.querySelectorAll('#phones button').forEach(b => b.setAttribute('aria-pressed', b.dataset.phone === id ? 'true' : 'false'));
+  if (selected) select(selected);
+}
+const phonesEl = document.getElementById('phones');
+for (const [id, s] of Object.entries(PHONES)) {
+  const b = document.createElement('button');
+  b.dataset.phone = id; b.textContent = s.name; b.setAttribute('aria-pressed', 'false');
+  b.addEventListener('click', () => applyPhone(id));
+  phonesEl.appendChild(b);
+}
+
+// schermo di gioco disegnato su canvas
+const balloons = [[230, 170, '#e9785f'], [880, 150, '#5a9bd8'], [990, 330, '#f0b84a'], [340, 360, '#8bc47a']];
+function drawScreen(beam = 0, popped = 0) {
+  const g = screenCanvas.getContext('2d'), W = screenCanvas.width, H = screenCanvas.height;
+  const wall = g.createLinearGradient(0, 0, 0, H);
+  wall.addColorStop(0, '#f4ece0'); wall.addColorStop(0.68, '#e9ddca'); wall.addColorStop(0.68, '#cbb393'); wall.addColorStop(1, '#bba07e');
+  g.fillStyle = wall; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#dbe9f4'; g.fillRect(640, 60, 220, 170);
+  g.strokeStyle = '#fff'; g.lineWidth = 10; g.strokeRect(640, 60, 220, 170);
+  g.fillStyle = '#9a8f86'; g.beginPath(); g.roundRect(120, 300, 360, 80, 22); g.fill();
+  const drawBalloon = (x, y, col, r = 46) => {
+    g.strokeStyle = 'rgba(80,60,40,.5)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(x, y + r * 1.2); g.quadraticCurveTo(x + 14, y + r * 2, x - 6, y + r * 2.8); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.ellipse(x, y, r * 0.85, r, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.ellipse(x - r * .3, y - r * .4, r * .18, r * .28, -.5, 0, Math.PI * 2); g.fill();
+  };
+  balloons.forEach(([x, y, c]) => drawBalloon(x, y, c));
+  const cx = W / 2, cy = H / 2;
+  if (!popped) drawBalloon(cx, cy - 6, '#d863a4', 54);
+  if (beam > 0) {
+    const sx = cx + 140, sy = H + 10;
+    g.save(); g.globalCompositeOperation = 'lighter';
+    for (const [w, a] of [[36, .25], [16, .55], [6, 1]]) {
+      g.strokeStyle = `rgba(255,170,60,${a * beam})`; g.lineWidth = w; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(sx, sy); g.lineTo(cx, cy); g.stroke();
+    }
+    g.restore();
+  }
+  if (popped) {
+    const k = popped;
+    for (let i = 0; i < 26; i++) {
+      const a = i * 2.4, r = 30 + 150 * k * (0.6 + (i % 5) / 8);
+      g.fillStyle = ['#f0b84a', '#d863a4', '#5a9bd8', '#8bc47a'][i % 4];
+      g.globalAlpha = Math.max(0, 1 - k * 0.8);
+      g.fillRect(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 12, 7);
+    }
+    g.globalAlpha = Math.max(0, 1 - k);
+    g.font = '800 64px "Bricolage Grotesque", sans-serif'; g.textAlign = 'center';
+    g.lineWidth = 8; g.strokeStyle = '#fff'; g.strokeText('+1', cx + 90, cy - 60 - 60 * k);
+    g.fillStyle = '#c4573a'; g.fillText('+1', cx + 90, cy - 60 - 60 * k);
+    g.globalAlpha = 1;
+  }
+  // mirino
+  g.lineWidth = 10; g.strokeStyle = 'rgba(30,30,30,.55)';
+  const cross = () => { g.beginPath(); g.arc(cx, cy, 34, 0, Math.PI * 2); g.moveTo(cx - 64, cy); g.lineTo(cx - 44, cy); g.moveTo(cx + 44, cy); g.lineTo(cx + 64, cy); g.moveTo(cx, cy - 64); g.lineTo(cx, cy - 44); g.moveTo(cx, cy + 44); g.lineTo(cx, cy + 64); g.stroke(); };
+  cross(); g.lineWidth = 5; g.strokeStyle = '#fff'; cross();
+  // HUD fuori dalle zone coperte dal cartone
+  g.textAlign = 'left'; g.font = '700 40px "Atkinson Hyperlegible", sans-serif';
+  const hud = (t, x, y, al = 'left') => { g.textAlign = al; g.lineWidth = 7; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(t, x, y); g.fillStyle = '#2a2a2a'; g.fillText(t, x, y); };
+  g.fillStyle = '#e0505a'; g.font = '44px sans-serif';
+  for (let i = 0; i < 5; i++) { g.fillStyle = i < 4 ? '#e0505a' : 'rgba(0,0,0,.2)'; g.fillText('♥', 40 + i * 50, 70); }
+  g.font = '700 40px "Atkinson Hyperlegible", sans-serif';
+  hud('Colpi 7/10', W - 40, 70, 'right');
+  hud('Punti 12', 40, cy + 14);
+  hud('1:24', W - 40, cy + 14, 'right');
+  screenTex.needsUpdate = true;
+}
+drawScreen();
+
+// ---------- selezione dei pezzi ----------
+const list = document.getElementById('parts');
+for (const [key, p] of Object.entries(PARTS)) {
+  const li = document.createElement('li');
+  li.innerHTML = `<button data-part="${key}"><span class="sw" style="background:${p.col}"></span><span>${p.name}</span><span class="q">${p.q}</span></button>`;
+  list.appendChild(li);
+}
+let selected = null;
+function select(key) {
+  selected = key;
+  const p = PARTS[key];
+  document.getElementById('info-name').textContent = p.name;
+  document.getElementById('info-desc').textContent = p.desc;
+  document.getElementById('info-pdf').textContent = p.pdf;
+  list.querySelectorAll('button').forEach(b => b.setAttribute('aria-current', b.dataset.part === key ? 'true' : 'false'));
+  for (const m of pickables) {
+    const mat = m.material;
+    if (!mat.emissive) continue;
+    if (!m.userData.ownMat) { m.material = mat.clone(); m.userData.ownMat = true; }
+    m.material.emissive.setHex(m.userData.part === key ? 0xff8a2a : 0x000000);
+    m.material.emissiveIntensity = m.userData.part === key ? 0.35 : 0;
+  }
+}
+list.addEventListener('click', e => { const b = e.target.closest('button'); if (b) select(b.dataset.part); });
+select('leva');
+applyPhone('i17');
+
+const ray = new THREE.Raycaster();
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hit = ray.intersectObjects(pickables.filter(m => m.visible && isVisible(m)), false)[0];
+  if (hit) select(hit.object.userData.part);
+});
+function isVisible(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+
+// ---------- viste ----------
+const VIEWS = {
+  tre:  { pos: [560, 380, 600], tgt: [190, 120, 0] },
+  lato: { pos: [195, 150, 860], tgt: [195, 120, 0] },
+  gioc: { pos: [-150, 262, 34], tgt: [135, 196, 0] },
+};
+let tween = null;
+function goView(name, instant = false) {
+  const v = VIEWS[name];
+  const narrow = viewer.clientWidth / viewer.clientHeight < 0.95;
+  const tgt = new THREE.Vector3(...v.tgt);
+  const pos = new THREE.Vector3(...v.pos);
+  if (narrow && name !== 'gioc') pos.sub(tgt).multiplyScalar(1.55).add(tgt);
+  if (name === 'gioc' && narrow) pos.sub(tgt).multiplyScalar(1.35).add(tgt);
+  if (instant || reduce) { camera.position.copy(pos); controls.target.copy(tgt); tween = null; return; }
+  tween = { t0: performance.now(), d: 750, p0: camera.position.clone(), p1: pos, q0: controls.target.clone(), q1: tgt };
+  ['tre', 'lato', 'gioc'].forEach(k => document.getElementById('v-' + k).setAttribute('aria-pressed', k === name));
+}
+['tre', 'lato', 'gioc'].forEach(k => document.getElementById('v-' + k).addEventListener('click', () => goView(k)));
+
+let explode = 0, explodeTarget = 0;
+const btnExpl = document.getElementById('t-expl');
+btnExpl.addEventListener('click', () => {
+  explodeTarget = explodeTarget ? 0 : 1;
+  btnExpl.setAttribute('aria-pressed', explodeTarget ? 'true' : 'false');
+  if (reduce) explode = explodeTarget;
+});
+const btnPhone = document.getElementById('t-phone');
+btnPhone.addEventListener('click', () => {
+  phone.visible = !phone.visible;
+  btnPhone.setAttribute('aria-pressed', phone.visible ? 'true' : 'false');
+});
+
+// ---------- grilletto ----------
+let audio;
+function pew() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(1100, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.16);
+    g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.2);
+    const o2 = audio.createOscillator(), g2 = audio.createGain();
+    o2.type = 'sine'; o2.frequency.setValueAtTime(1568, t + 0.12);
+    g2.gain.setValueAtTime(0.0001, t); g2.gain.setValueAtTime(0.09, t + 0.12); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o2.connect(g2).connect(audio.destination); o2.start(t + 0.12); o2.stop(t + 0.55);
+  } catch (e) {}
+}
+const MAX_ANGLE = THREE.MathUtils.degToRad(4.6);
+let shot = null;
+function fire() {
+  if (shot && performance.now() - shot < 900) return;
+  shot = performance.now();
+  pew();
+}
+document.getElementById('fire').addEventListener('click', fire);
+addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); fire(); } });
+
+// ---------- loop ----------
+function resize() {
+  const w = viewer.clientWidth, h = viewer.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(viewer);
+resize();
+goView('tre', true);
+
+const notch = new THREE.Vector3(), anchor = new THREE.Vector3(ANCHOR[0], ANCHOR[1], 0);
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+let lastScreen = -1;
+function frame(now) {
+  if (tween) {
+    const k = Math.min(1, (now - tween.t0) / tween.d), e = ease(k);
+    camera.position.lerpVectors(tween.p0, tween.p1, e);
+    controls.target.lerpVectors(tween.q0, tween.q1, e);
+    if (k === 1) tween = null;
+  }
+  explode += (explodeTarget - explode) * (reduce ? 1 : 0.12);
+  if (Math.abs(explodeTarget - explode) < 0.001) explode = explodeTarget;
+  for (const o of movers) o.position.copy(o.userData.base).addScaledVector(o.userData.ex, explode);
+
+  // leva: 0-120 ms tirata, 120-300 tenuta, 300-520 ritorno
+  let ang = 0, beam = 0, popped = 0;
+  if (shot !== null) {
+    const t = now - shot;
+    if (t < 120) ang = t / 120;
+    else if (t < 300) ang = 1;
+    else if (t < 520) ang = 1 - (t - 300) / 220;
+    if (t > 110 && t < 420) beam = 1 - Math.max(0, (t - 230) / 190);
+    if (t > 160 && t < 1300) popped = Math.min(1, (t - 160) / 900);
+    if (t > 1300) shot = null;
+  }
+  leverPivot.rotation.z = -MAX_ANGLE * ang;
+  const key = Math.round(beam * 20) + '_' + Math.round(popped * 40);
+  if (key !== lastScreen) { drawScreen(beam, popped); lastScreen = key; }
+
+  const vis = explode < 0.04;
+  elasticRet.visible = vis; elasticHook.visible = vis;
+  if (vis) {
+    notch.set(137 - PIVOT[0], 79.5 - PIVOT[1], 0);
+    leverPivot.localToWorld(notch);
+    stretch(elasticRet, notch, anchor);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+document.fonts?.ready.then(() => { lastScreen = -1; });
+requestAnimationFrame(frame);
+</script>
