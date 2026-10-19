@@ -1,0 +1,284 @@
+import qrcode from 'qrcode-generator'
+import { setVolume } from './audio.ts'
+import { fmt } from './game.ts'
+import { icon } from './icons.ts'
+import { playLaser } from './lasertag.ts'
+import { connect, createRoom, type Net } from './net.ts'
+import { isReady, remaining, markerTaken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
+import { startSensors } from './sensors.ts'
+import { saveSettings, settings } from './settings.ts'
+import { app, esc, goFullscreen, on, render } from './ui.ts'
+
+const MODES = { ffa: 'Tutti contro tutti', squadre: 'Due squadre' }
+let back: () => void = () => {}
+
+// Crea partita: questo telefono diventa il regista.
+export async function createGame(onBack: () => void) {
+  back = onBack
+  render('<p class="note center">Creo la partita...</p>')
+  try {
+    enter(await createRoom())
+  } catch {
+    alert('Non riesco a creare la partita. Serve la connessione a internet.')
+    back()
+  }
+}
+
+// Entra in partita con il codice di 4 lettere (o dal link del QR).
+export function joinScreen(onBack: () => void, code = '') {
+  back = onBack
+  render(`
+    <header class="bar"><button class="btn small" data-back>${icon('back', 20)}Menu</button><h2>Entra in partita</h2></header>
+    <div class="join">
+      <label class="field">Il codice della partita
+        <input class="code" data-code maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD" value="${esc(code)}">
+      </label>
+      <label class="field">Il tuo nome
+        <input class="name" data-name maxlength="12" autocomplete="off" placeholder="Scrivilo qui" value="${esc(settings.name)}">
+      </label>
+      <button class="big primary" data-join>${icon('enter', 30)}Entra</button>
+      <p class="note">Oppure inquadra il QR del regista con la fotocamera del telefono.</p>
+    </div>`)
+  const codeEl = app.querySelector<HTMLInputElement>('[data-code]')!
+  const nameEl = app.querySelector<HTMLInputElement>('[data-name]')!
+  codeEl.addEventListener('input', () => (codeEl.value = codeEl.value.toUpperCase().replace(/[^A-Z]/g, '')))
+  on('[data-back]', back)
+  on('[data-join]', () => {
+    if (codeEl.value.length !== 4) return codeEl.focus()
+    if (!nameEl.value.trim()) return nameEl.focus()
+    settings.name = nameEl.value.trim()
+    saveSettings()
+    enter(codeEl.value)
+  })
+}
+
+type View = 'lobby' | 'gioco' | 'fuori' | 'risultati'
+
+function enter(code: string) {
+  history.replaceState(null, '', `/?r=${code}`) // ricaricando la pagina si rientra nella stessa stanza
+  const net = connect(code, () => ({ name: settings.name || 'Senza nome', color: settings.color, marker: settings.marker }))
+  let view: View = 'lobby'
+  let lastPhase = ''
+  render('<p class="note center">Mi collego alla partita...</p>')
+
+  const leave = () => {
+    clearInterval(tick)
+    net.close()
+    history.replaceState(null, '', '/')
+    back()
+  }
+  let wasResting = false
+  const tick = setInterval(() => {
+    // aggiorna i tempi senza ridisegnare tutto: plancia del regista e pausa tra i round
+    const r = net.room
+    if (!r || app.hidden) return
+    if (view === 'gioco' && r.phase === 'gioco') return updateBoard(net)
+    const resting = r.restUntil > net.serverNow()
+    const rest = app.querySelector('[data-rest]')
+    if (rest) rest.textContent = resting ? `Pausa tra i round, per far riposare i telefoni: ancora ${fmt((r.restUntil - net.serverNow()) / 1000)}` : ''
+    if (wasResting && !resting) show() // riattiva il pulsante Via
+    wasResting = resting
+  }, 1000)
+
+  net.onStatus = () => {
+    if (net.error) {
+      alert(net.error)
+      return leave()
+    }
+    app.querySelector('[data-net]')?.toggleAttribute('hidden', net.online)
+  }
+  net.onState = (r) => {
+    if (r.phase !== lastPhase) {
+      if (r.phase === 'gioco') view = 'gioco'
+      else if (lastPhase === 'gioco') view = r.results ? 'risultati' : 'lobby'
+      lastPhase = r.phase
+    }
+    setVolume(settings.volume * r.volume)
+    show()
+  }
+
+  function show() {
+    const r = net.room
+    if (!r) return
+    const me = r.players.find((p) => p.id === net.me)
+    const isDir = r.dirId === net.me
+    const plays = !isDir || r.config.plays
+    if (view === 'gioco' && r.phase === 'gioco') {
+      if (!plays) return board(net)
+      if (app.hidden) return
+      app.hidden = true
+      goFullscreen()
+      playLaser(net, () => {
+        app.hidden = false
+        if (net.room?.phase === 'gioco') view = 'fuori' // uscito a metà: può rientrare
+        net.onState(net.room!) // la fine del round l'ha vista il gioco: ora la vede la lobby
+      })
+      return
+    }
+    if (view === 'risultati' && r.results) return results(r, r.results, () => ((view = 'lobby'), show()))
+    if (r.phase === 'gioco') return inGame(r, () => ((view = 'gioco'), show()))
+    lobby(net, r, me, isDir, leave)
+  }
+}
+
+function rulesHtml(c: Config) {
+  const rules: [string, string, string][] = [
+    ['zap', 'Si spara', 'Metti il mirino sul foglio di un avversario e tocca il grilletto.'],
+    ['up', 'Si ricarica', c.ammo ? `Hai ${c.ammo} colpi. Per ricaricare alza il fucile verso il soffitto.` : 'Colpi infiniti in questa partita.'],
+    ['heart', 'Fuori gioco', `Hai ${c.life} cuori. Quando finiscono stai fuori 8 secondi, poi rientri con lo scudo.`],
+    ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra con più punti. Non si colpiscono i compagni.' : '1 punto per ogni colpo, 3 in più quando mandi qualcuno fuori gioco.'],
+  ]
+  return `<div class="rules">${rules.map(([i, t, d]) => `<div class="rule">${icon(i, 34)}<b>${t}</b><small>${d}</small></div>`).join('')}</div>`
+}
+
+function qrSvg(text: string) {
+  const qr = qrcode(0, 'M')
+  qr.addData(text)
+  qr.make()
+  return qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true })
+}
+
+function chips(p: Player, r: Room) {
+  const c = (ok: boolean, label: string) => `<span class="mini ${ok ? 'ok' : ''}">${label}</span>`
+  return `${c(p.ready.gun, 'fucile')}${c(p.ready.sens, 'sensori')}${c(p.ready.cam, 'fotocamera')}${c(p.ready.cal, 'mirino')}${markerTaken(r, p) ? '<span class="mini warn">numero doppio</span>' : ''}`
+}
+
+function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave: () => void) {
+  const c = r.config
+  const ps = participants(r)
+  const online = ps.filter((p) => p.online)
+  const allReady = online.length > 0 && online.every((p) => isReady(p) && !markerTaken(r, p))
+  const resting = r.restUntil > net.serverNow()
+  const link = `${location.origin}/?r=${r.code}`
+  const iPlay = !!me && (!isDir || c.plays)
+  const seg = (key: keyof Config, opts: [unknown, string][]) =>
+    `<div class="seg">${opts.map(([v, l]) => `<button class="${c[key] === v ? 'on' : ''}" data-cfg="${key}" data-v='${JSON.stringify(v)}'>${l}</button>`).join('')}</div>`
+
+  render(`
+    <header class="bar"><button class="btn small" data-leave>${icon('back', 20)}Esci</button><h2>Laser tag</h2>
+      <span class="chip warn" data-net ${net.online ? 'hidden' : ''}>Riconnessione...</span></header>
+    <div class="lobby">
+      <section>
+        <div class="code-box">${isDir ? `<div class="qr">${qrSvg(link)}</div>` : ''}<div><small>Codice della partita</small><b>${r.code}</b>${isDir ? '<small>Gli altri toccano Entra in partita e scrivono il codice, oppure inquadrano il QR.</small>' : `<small>${MODES[c.mode]}, ${fmt(c.duration)}</small>`}</div></div>
+        ${isDir ? `
+          <h3>Gioco</h3>${seg('mode', [['ffa', MODES.ffa], ['squadre', MODES.squadre]])}
+          <h3>Durata</h3>${seg('duration', [[120, '2 min'], [180, '3 min'], [300, '5 min']])}
+          <div class="two"><div><h3>Cuori</h3>${seg('life', [[3, '3'], [5, '5'], [7, '7']])}</div>
+          <div><h3>Colpi</h3>${seg('ammo', [[10, '10, poi ricarica'], [0, 'Infiniti']])}</div></div>
+          <h3>Il regista</h3>${seg('plays', [[true, 'Gioco anche io'], [false, 'Faccio solo il regista']])}
+          <label class="field">Volume per tutti <input type="range" min="0" max="1" step="0.1" value="${r.volume}" data-vol></label>`
+        : rulesHtml(c)}
+      </section>
+      <section>
+        <h3>${icon('users', 18)} Giocatori (${ps.length})</h3>
+        <ul class="players">${ps.map((p) => `
+          <li class="${p.online ? '' : 'off'}">
+            <span class="dot" style="--c:${p.color}"></span>
+            <span class="pname"><b>${esc(p.name)}${p.id === net.me ? ' (tu)' : ''}${p.id === r.dirId ? ' · regista' : ''}</b>
+              <span class="mchips">${p.online ? chips(p, r) : '<span class="mini">disconnesso</span>'}</span></span>
+            <span class="num" title="Numero del marker">${p.marker}</span>
+            ${c.mode === 'squadre' ? `<button class="team t${p.team}" data-team="${p.id}" ${isDir ? '' : 'disabled'}>${TEAMS[p.team].name.replace('Squadra ', '')}</button>` : ''}
+          </li>`).join('') || '<li class="note">Ancora nessuno. Fai entrare gli altri con il codice.</li>'}</ul>
+        ${iPlay ? `
+          <div class="mine-box">
+            <label class="field inline">Il mio marker
+              <select data-marker>${Array.from({ length: MAX_MARKER }, (_, i) => `<option ${i + 1 === me!.marker ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>
+            <button class="btn ${me!.ready.gun ? '' : 'primary'}" data-ready>${me!.ready.gun ? 'Fucile non pronto' : `${icon('target', 20)}Ho il fucile pronto`}</button>
+          </div>
+          ${me && !me.ready.cal && me.ready.gun ? '<p class="note">Il mirino non è calibrato: fallo da Prepara il fucile per colpire meglio.</p>' : ''}` : ''}
+        ${isDir ? `
+          <p class="note" data-rest></p>
+          <div class="cta-bar">
+            <button class="big primary go" data-start ${allReady && !resting ? '' : 'disabled'}>${icon('zap', 30)}Via!</button>
+            ${!allReady ? `<button class="btn" data-force ${resting || !ps.length ? 'disabled' : ''}>Parti lo stesso</button>` : ''}
+          </div>` : '<p class="note">Aspetta che il regista faccia partire il gioco.</p><p class="note" data-rest></p>'}
+      </section>
+    </div>
+  `)
+  on('[data-leave]', () => confirm('Esci dalla partita?') && leave())
+  on('[data-cfg]', (el) => net.send({ t: 'config', config: { [el.dataset.cfg!]: JSON.parse(el.dataset.v!) } }))
+  on('[data-team]', (el) => net.send({ t: 'team', id: el.dataset.team! }))
+  on('[data-start]', () => net.send({ t: 'start' }))
+  on('[data-force]', () => confirm('Non sono tutti pronti. Partire lo stesso?') && net.send({ t: 'start' }))
+  app.querySelector<HTMLInputElement>('[data-vol]')?.addEventListener('change', (e) => net.send({ t: 'volume', v: Number((e.target as HTMLInputElement).value) }))
+  app.querySelector<HTMLSelectElement>('[data-marker]')?.addEventListener('change', (e) => {
+    settings.marker = Number((e.target as HTMLSelectElement).value)
+    saveSettings()
+    net.send({ t: 'marker', marker: settings.marker })
+  })
+  on('[data-ready]', async () => {
+    if (me!.ready.gun) return net.send({ t: 'ready', ready: { ...me!.ready, gun: false } })
+    // controlli dentro il tocco: su iPhone permessi di sensori e fotocamera vanno chiesti da un gesto
+    const m = await startSensors()
+    let cam = false
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+      s.getTracks().forEach((t) => t.stop())
+      cam = true
+    } catch {}
+    if (!cam) alert('La fotocamera non si apre. Controlla il permesso nelle impostazioni del browser.')
+    net.send({ t: 'ready', ready: { gun: true, cam, sens: m !== 'spenti' && m !== 'negato', cal: !!(settings.offX || settings.offY) } })
+  })
+}
+
+// Partita in corso ma questo telefono è uscito: si può rientrare.
+function inGame(r: Room, rejoin: () => void) {
+  render(`
+    <header class="bar"><h2>Partita in corso</h2></header>
+    <p class="note">${MODES[r.config.mode]}. Rientra quando vuoi: il tuo punteggio è salvo.</p>
+    <div class="row"><button class="big primary" data-rejoin>${icon('enter', 30)}Rientra in partita</button></div>`)
+  on('[data-rejoin]', rejoin)
+}
+
+function results(r: Room, s: Standing[], toLobby: () => void) {
+  const teams = r.config.mode === 'squadre' ? teamScores(s) : null
+  const win = teams ? (teams[0] === teams[1] ? -1 : teams[0] > teams[1] ? 0 : 1) : -1
+  render(`
+    <header class="bar"><h2>Fine partita!</h2></header>
+    ${teams ? `<div class="teams-score">${[0, 1].map((t) => `<div class="ts t${t} ${win === t ? 'win' : ''}"><small>${TEAMS[t].name}</small><b>${teams[t]}</b>${win === t ? `<span>${icon('crown', 18)} Vince!</span>` : ''}</div>`).join('')}</div>${win < 0 ? '<p class="badge">Pareggio!</p>' : ''}` : ''}
+    <table class="rec"><tr><th></th><th>Nome</th><th>Punti</th><th>Colpi</th><th>Mandati fuori</th><th>Precisione</th></tr>
+    ${s.map((p, i) => `<tr><td>${i + 1}</td><td><span class="dot" style="--c:${p.color}"></span> ${esc(p.name)}</td><td>${p.score}</td><td>${p.hits}</td><td>${p.elims}</td><td>${Math.round(p.acc * 100)}%</td></tr>`).join('')}</table>
+    <div class="row"><button class="big primary" data-lobby>${icon('users', 30)}Torna alla lobby</button></div>`)
+  on('[data-lobby]', toLobby)
+}
+
+// Plancia del regista che non gioca: elenco, punteggi live, comandi.
+function board(net: Net) {
+  const r = net.room!
+  if (!app.querySelector('[data-board]')) {
+    render(`
+      <header class="bar"><h2>Plancia del regista</h2><b class="board-time" data-btime></b></header>
+      <div data-board></div>
+      <div class="row">
+        <button class="big primary" data-bpause></button>
+        <button class="big" data-bstop>${icon('stop', 30)}Termina</button>
+      </div>
+      <label class="field">Volume per tutti <input type="range" min="0" max="1" step="0.1" value="${r.volume}" data-bvol></label>`)
+    on('[data-bpause]', () => net.send({ t: 'pause', on: !net.room!.pausedAt }))
+    on('[data-bstop]', () => confirm('Terminare la partita per tutti?') && net.send({ t: 'stop' }))
+    app.querySelector<HTMLInputElement>('[data-bvol]')!.addEventListener('change', (e) => net.send({ t: 'volume', v: Number((e.target as HTMLInputElement).value) }))
+  }
+  updateBoard(net)
+}
+
+function updateBoard(net: Net) {
+  const r = net.room!
+  const box = app.querySelector('[data-board]')
+  if (!box) return
+  const now = net.serverNow()
+  const left = r.startAt > now ? `Parte tra ${Math.ceil((r.startAt - now) / 1000)}` : fmt(remaining(r, now) / 1000)
+  app.querySelector('[data-btime]')!.textContent = left
+  const b = app.querySelector('[data-bpause]')!
+  b.innerHTML = r.pausedAt ? `${icon('play', 30)}Riprendi` : `${icon('pause', 30)}Pausa per tutti`
+  const ps = [...participants(r)].sort((a, b) => b.score - a.score)
+  const teams = r.config.mode === 'squadre' ? teamScores(ps.map((p) => ({ ...p, acc: 0 }))) : null
+  box.innerHTML = `${teams ? `<div class="teams-score">${[0, 1].map((t) => `<div class="ts t${t}"><small>${TEAMS[t].name}</small><b>${teams[t]}</b></div>`).join('')}</div>` : ''}
+    <ul class="players">${ps.map((p) => {
+      const st = status(p, now)
+      const life = p.life <= 0 && now >= p.outUntil ? r.config.life : p.life
+      return `<li class="${p.online ? '' : 'off'}"><span class="dot" style="--c:${p.color}"></span>
+        <span class="pname"><b>${esc(p.name)}</b><span class="mchips"><span class="mini ${st === 'in gioco' ? 'ok' : st === 'fuori' ? 'warn' : ''}">${p.online ? st : 'disconnesso'}</span>
+        <span class="hearts">${icon('heart', 14).repeat(Math.max(0, life))}</span></span></span>
+        <b class="pscore">${p.score}</b></li>`
+    }).join('')}</ul>`
+}

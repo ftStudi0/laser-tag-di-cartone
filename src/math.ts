@@ -96,3 +96,16 @@ export function solveFocal(x1: number, x2: number, cx: number, theta: number): n
   }
   return (lo + hi) / 2
 }
+
+// Il punto (x, y) è dentro il poligono allargato di "grow" (0.2 = 20%) attorno al suo centro?
+export function inPoly(pts: [number, number][], x: number, y: number, grow = 0): boolean {
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length
+  const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length
+  const q = pts.map(([px, py]) => [cx + (px - cx) * (1 + grow), cy + (py - cy) * (1 + grow)])
+  let inside = false
+  for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+    const [xi, yi] = q[i], [xj, yj] = q[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}

@@ -26,6 +26,7 @@ const DEFAULTS = {
   duration: 60, // 0 = allenamento
   gunH: 1.2, // altezza del fucile da terra in metri, per il pavimento virtuale degli zombi
   z3d: false, // zombi disegnati in 3D
+  marker: 1, // numero del proprio marker stampato
 }
 export type Settings = typeof DEFAULTS
 

@@ -1,6 +1,7 @@
 // Controllo della logica pura: npm run check
 import assert from 'node:assert/strict'
-import { D, deviceQuat, dirFrom, forward, fovFromFocal, project, qRot, solveFocal, viewFor, yawOf } from './math.ts'
+import { D, deviceQuat, dirFrom, forward, fovFromFocal, inPoly, project, qRot, solveFocal, viewFor, yawOf } from './math.ts'
+import { DEFAULT_CONFIG, OUT_MS, resetForRound, SAFE_MS, shoot, standings, type Player, type Room } from './rules.ts'
 import { insertRecord } from './settings.ts'
 import { schedule, zDist, ZOMBIE, zombieSchedule } from './targets.ts'
 
@@ -57,5 +58,44 @@ assert.equal(l.length, 10)
 ;[list, rank] = insertRecord(list, { name: 'b', score: 105, acc: 1, streak: 1, date: 0 })
 assert.equal(rank, 0)
 assert.equal(list[9].score, 20)
+
+// colpo dentro il marker allargato del 20%
+const sq: [number, number][] = [[0, 0], [10, 0], [10, 10], [0, 10]]
+assert.ok(inPoly(sq, 5, 5) && !inPoly(sq, 11, 5) && inPoly(sq, 10.9, 5, 0.2) && !inPoly(sq, 11.2, 5, 0.2))
+
+// regole del laser tag, applicate dal server
+const mk = (id: string, marker: number, team: 0 | 1): Player => {
+  const p = { id, name: id, color: '#000', marker, team, ready: { cam: true, sens: true, cal: true, gun: true }, online: true } as Player
+  resetForRound(p, DEFAULT_CONFIG)
+  return p
+}
+const lt: Room = {
+  code: 'ABCD', phase: 'gioco', dirId: 'a', config: { ...DEFAULT_CONFIG }, players: [mk('a', 1, 0), mk('b', 2, 1), mk('c', 3, 0)],
+  startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null,
+}
+const [pa, pb, pc] = lt.players
+let now = 1000
+assert.equal(shoot(lt, pa, 2, now)?.hit, pb)
+assert.equal(shoot(lt, pa, 2, now + 100), null) // troppo presto: cadenza
+for (let i = 1; i < 5; i++) shoot(lt, pa, 2, (now += 300))
+assert.equal(pb.life, 0)
+assert.equal(pa.score, 5 + 3) // 5 colpi, più 3 per averlo mandato fuori gioco
+assert.equal(shoot(lt, pa, 2, (now += 300))?.hit, null) // fuori gioco: non si colpisce
+assert.equal(shoot(lt, pb, 1, now + 50), null) // e non spara
+now += OUT_MS
+assert.equal(shoot(lt, pa, 2, (now += 10))?.hit, null) // scudo dopo il rientro
+assert.equal(pb.life, DEFAULT_CONFIG.life)
+now += SAFE_MS
+assert.equal(shoot(lt, pa, 2, now)?.hit, pb)
+assert.equal(pa.ammo, 10 - 8) // 8 spari validi su 10 colpi
+assert.equal(shoot(lt, pa, 99, (now += 300))?.hit, null) // marker di nessuno
+shoot(lt, pa, null, (now += 300)) // decimo colpo
+assert.equal(shoot(lt, pa, 99, (now += 300)), null) // colpi finiti
+lt.config.mode = 'squadre'
+pc.ammo = 10
+assert.equal(shoot(lt, pc, 1, (now += 300))?.hit, null) // niente fuoco amico
+assert.equal(standings(lt)[0].id, 'a')
+lt.pausedAt = now
+assert.equal(shoot(lt, pc, 2, (now += 300)), null) // in pausa non si spara
 
 console.log('ok')

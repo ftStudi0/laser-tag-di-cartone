@@ -27,15 +27,17 @@ Un telefono fa da **regista**: crea la partita, sceglie il gioco e fa partire tu
 - Server: Cloudflare Workers + Durable Objects (piano gratuito), WebSocket con ibernazione.
 - Nessun database, nessun account.
 
-## Provare dal telefono (milestone 1, nessun server)
+## Provare dal telefono
 
 Serve Node 22 o superiore.
 
 ```sh
 npm install
 npm run dev        # server HTTPS con certificato locale, anche sulla rete Wi-Fi
-npm run check      # controllo della logica (quaternioni, bersagli, record)
+npm run check      # controllo della logica (quaternioni, bersagli, record, regole del laser tag)
 ```
+
+`npm run dev` fa girare in locale anche il server delle partite (Worker e Durable Object, tramite il plugin Cloudflare per Vite): non serve un altro comando come `wrangler dev`.
 
 Fotocamera e sensori funzionano solo in HTTPS. Due modi per aprire l'app dal telefono:
 
@@ -43,10 +45,35 @@ Fotocamera e sensori funzionano solo in HTTPS. Due modi per aprire l'app dal tel
    ```sh
    cloudflared tunnel --url https://localhost:5173 --no-tls-verify
    ```
-   Apri sul telefono l'indirizzo `https://...trycloudflare.com` che compare.
+   Apri sul telefono l'indirizzo `https://...trycloudflare.com` che compare. Non serve un account. Tutti i telefoni della partita aprono lo stesso indirizzo.
 2. **Stessa rete Wi-Fi**: apri l'indirizzo `Network` stampato da `npm run dev` (per esempio `https://192.168.1.20:5173`) e accetta l'avviso sul certificato.
 
 Per provare la PWA e il funzionamento senza rete usa la build: `npm run build && npm run preview`, poi lo stesso tunnel sulla porta 4173. Su iPhone: Condividi, Aggiungi alla schermata Home, e apri il gioco dall'icona (schermo intero e orizzontale).
+
+## Pubblicare su Cloudflare (piano gratuito)
+
+Una volta sola, accedi al tuo account Cloudflare:
+
+```sh
+npx wrangler login
+```
+
+Poi, ogni volta che vuoi aggiornare il gioco:
+
+```sh
+npm run deploy     # build e wrangler deploy
+```
+
+Il gioco va su `https://laser-tag-cartone.<tuo-sottodominio>.workers.dev`. Il Durable Object usa l'archivio SQLite (`new_sqlite_classes` in `wrangler.jsonc`), l'unico permesso nel piano gratuito. Attenzione: pubblicare una nuova versione scollega chi sta giocando in quel momento.
+
+I tipi del Worker (`worker/worker-configuration.d.ts`) si rigenerano da soli a ogni build; a mano: `npm run types`.
+
+## Laser tag
+
+- Stampa i marker da **Stampa i marker** (un foglio A4 per giocatore, due copie: petto e schiena). Stampa al 100%.
+- Un telefono tocca **Crea partita** e diventa il regista: mostra il codice di 4 lettere e il QR. Può giocare anche lui o fare solo da arbitro (plancia con punteggi e comandi).
+- Gli altri toccano **Entra in partita**, scrivono il codice (o inquadrano il QR), scelgono il numero del proprio marker e toccano **Ho il fucile pronto**.
+- Al server arrivano solo eventi di gioco (numero del marker colpito, stato). Le immagini della fotocamera restano sul telefono. La stanza si cancella da sola 30 minuti dopo che è rimasta vuota.
 
 ## Come partire
 
@@ -54,7 +81,7 @@ Per provare la PWA e il funzionamento senza rete usa la build: `npm run build &&
 2. Chiedi: "Leggi docs/PROMPT.md e inizia la milestone 1".
 3. A fine milestone prova sul telefono quello che Claude Code ti indica.
 
-Per la milestone 2 serve un account Cloudflare gratuito.
+Per pubblicare il gioco serve un account Cloudflare gratuito.
 
 ## Milestone
 

@@ -4,7 +4,7 @@ import { settings } from './settings.ts'
 
 // Lo "stage" è il video della fotocamera a tutto schermo, con sopra un canvas e la HUD.
 const el = document.getElementById('stage')!
-const video = el.querySelector('video')!
+export const video = el.querySelector('video')!
 const canvas = el.querySelector('canvas')!
 export const hud = el.querySelector<HTMLElement>('.hud')!
 export const ctx = canvas.getContext('2d')!

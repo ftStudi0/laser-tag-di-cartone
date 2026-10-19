@@ -46,6 +46,10 @@ const SOUNDS: Record<string, [number, Synth]> = {
   pop_stelle: [0.45, (c, o) => [1568, 2093, 2637].forEach((f, i) => tone(c, o, 'sine', f, f, i * 0.05, 0.22, 0.2))],
   pop_mostri: [0.4, (c, o) => { tone(c, o, 'sine', 180, 700, 0, 0.14, 0.35); tone(c, o, 'sine', 700, 300, 0.14, 0.22, 0.25) }],
   pop_zombi: [0.45, (c, o) => { tone(c, o, 'sine', 220, 140, 0, 0.18, 0.3); tone(c, o, 'triangle', 300, 900, 0.16, 0.2, 0.25); noise(c, o, 0.16, 0.06, 1, 2500) }],
+  // chi viene colpito: suono ben riconoscibile, si sente nella stanza (boing che scende e risale, non stridente)
+  colpito: [0.6, (c, o) => { tone(c, o, 'triangle', 880, 330, 0, 0.25, 0.5); tone(c, o, 'sine', 330, 660, 0.22, 0.3, 0.45); tone(c, o, 'sine', 1320, 1320, 0, 0.12, 0.15) }],
+  fuori: [1, (c, o) => [784, 659, 523, 392].forEach((f, i) => tone(c, o, 'triangle', f, f * 0.97, i * 0.16, 0.22, 0.35))],
+  rientro: [0.6, (c, o) => [523, 659, 784].forEach((f, i) => tone(c, o, 'sine', f, f, i * 0.09, 0.2, 0.3))],
   pop_lattine: [0.4, (c, o) => { [523, 787, 1150].forEach((f) => tone(c, o, 'square', f, f * 0.98, 0, 0.3, 0.07)); noise(c, o, 0, 0.05, 1, 4000, 1) }],
 }
 
@@ -78,12 +82,13 @@ export function setVolume(v: number) {
   if (master) master.gain.value = v
 }
 
-export function play(name: string, vol = 1) {
+export function play(name: string, vol = 1, rate = 1) {
   const b = buffers[name]
   if (!ctx || !master || !b) return
   if (ctx.state !== 'running') ctx.resume()
   const s = ctx.createBufferSource()
   s.buffer = b
+  s.playbackRate.value = rate // tono più alto o più basso, per esempio per squadra
   if (vol === 1) s.connect(master)
   else {
     const g = ctx.createGain()

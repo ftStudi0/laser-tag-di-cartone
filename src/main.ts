@@ -3,19 +3,19 @@ import './style.css'
 import { setVolume, unlockAudio } from './audio.ts'
 import { fmt, playSolo, type Result } from './game.ts'
 import { icon } from './icons.ts'
-import { calibrateAim, calibrateFov, compassTest, triggerTest } from './prepare.ts'
+import { createGame, joinScreen } from './lobby.ts'
+import { aimTest, calibrateAim, calibrateFov, compassTest, triggerTest } from './prepare.ts'
+import { printScreen } from './print.ts'
 import { mode, MODE_TEXT, startSensors } from './sensors.ts'
 import { COLORS, loadRecords, MODELS, recordKey, saveSettings, settings } from './settings.ts'
 import type { Diff, Theme } from './targets.ts'
 import { drawTarget, THEMES } from './themes.ts'
+import { app, esc, goFullscreen, on, render } from './ui.ts'
 
-const app = document.getElementById('app')!
 const DIFFS: Record<Diff, string> = { facile: 'Facile', media: 'Media', difficile: 'Difficile' }
 const DURATIONS: [number, string][] = [[60, '1 min'], [90, '1½ min'], [120, '2 min'], [0, 'Allenamento']]
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
-
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // Primo tocco ovunque: sblocca l'audio (iPhone lo vuole da un gesto).
 addEventListener('pointerdown', unlockAudio, { capture: true })
@@ -36,25 +36,6 @@ let battery = false
   check()
 })
 
-function render(html: string) {
-  app.innerHTML = html
-  app.querySelectorAll('.seg button, .card').forEach((b) => b.setAttribute('aria-pressed', String(b.classList.contains('on'))))
-  app.scrollTop = 0
-  scrollTo(0, 0)
-}
-
-const on = (sel: string, fn: (el: HTMLElement) => void) =>
-  app.querySelectorAll<HTMLElement>(sel).forEach((el) => el.addEventListener('click', () => fn(el)))
-
-// Su Android: schermo intero e orizzontale. Su iPhone non c'è, serve la PWA.
-function goFullscreen() {
-  const d = document.documentElement
-  if (document.fullscreenElement || !d.requestFullscreen) return
-  d.requestFullscreen({ navigationUI: 'hide' })
-    .then(() => (screen.orientation as any)?.lock?.('landscape'))
-    .catch(() => {})
-}
-
 function home() {
   const m = mode()
   render(`
@@ -70,10 +51,10 @@ function home() {
     </header>
     <div class="grid">
       <button class="big primary" data-go="solo">${icon('target', 30)}Gioca da sola/o</button>
-      <button class="big" disabled>${icon('megaphone', 30)}Crea partita<small>in arrivo</small></button>
-      <button class="big" disabled>${icon('enter', 30)}Entra in partita<small>in arrivo</small></button>
+      <button class="big" data-go="create">${icon('megaphone', 30)}Crea partita<small>Laser tag</small></button>
+      <button class="big" data-go="join">${icon('enter', 30)}Entra in partita</button>
       <button class="big" data-go="prepare">${icon('wrench', 30)}Prepara il fucile</button>
-      <button class="big" disabled>${icon('printer', 30)}Stampa i marker<small>in arrivo</small></button>
+      <button class="big" data-go="print">${icon('printer', 30)}Stampa i marker</button>
       <button class="big" data-go="records">${icon('trophy', 30)}Record</button>
     </div>
     <div class="chips">
@@ -226,6 +207,7 @@ function prepare() {
       <button class="step" data-t="aim"><b>2. Calibra il mirino</b><small>${settings.offX || settings.offY ? `Fatto (${Math.round(settings.offX)}, ${Math.round(settings.offY)})` : 'Da fare, con il telefono nel fucile'}</small></button>
       <button class="step" data-t="fov"><b>3. Campo visivo</b><small>${settings.fov.toFixed(1)} gradi. Serve perché i bersagli non scivolino.</small></button>
       <button class="step" data-t="compass"><b>4. Prova del giro completo</b><small>${settings.drift < 0 ? 'Da fare' : `Ultimo scarto: ${settings.drift.toFixed(0)} gradi ${settings.drift <= 15 ? '(bene)' : '(troppo)'}`}</small></button>
+      <button class="step" data-t="aimtest"><b>5. Prova mirino (laser tag)</b><small>Riconosce i marker stampati e stima la distanza.</small></button>
     </div>
   `)
   on('[data-back]', home)
@@ -240,10 +222,10 @@ function prepare() {
     saveSettings()
     prepare()
   })
-  const TOOLS: Record<string, (done: () => void) => void> = { trigger: triggerTest, aim: calibrateAim, fov: calibrateFov, compass: compassTest }
+  const TOOLS: Record<string, (done: () => void) => void> = { trigger: triggerTest, aim: calibrateAim, fov: calibrateFov, compass: compassTest, aimtest: aimTest }
   on('[data-t]', async (el) => {
     goFullscreen()
-    if (el.dataset.t !== 'trigger' && el.dataset.t !== 'aim') await startSensors()
+    if (el.dataset.t === 'fov' || el.dataset.t === 'compass') await startSensors()
     app.hidden = true
     TOOLS[el.dataset.t!](() => {
       app.hidden = false
@@ -300,6 +282,12 @@ function settingsScreen() {
   })
 }
 
-const SCREENS: Record<string, () => void> = { solo: soloSetup, prepare, records: () => records(), settings: settingsScreen }
+const SCREENS: Record<string, () => void> = {
+  solo: soloSetup, prepare, records: () => records(), settings: settingsScreen,
+  create: () => createGame(home), join: () => joinScreen(home), print: () => printScreen(home),
+}
 
-home()
+// dal QR del regista (o ricaricando la pagina in una stanza) si entra direttamente
+const room = new URLSearchParams(location.search).get('r')
+if (room && /^[A-Z]{4}$/.test(room)) joinScreen(home, room)
+else home()

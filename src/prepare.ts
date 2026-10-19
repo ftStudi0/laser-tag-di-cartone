@@ -2,7 +2,8 @@ import { play } from './audio.ts'
 import { D, forward, fovFromFocal, project, solveFocal, wrap, type Vec3 } from './math.ts'
 import { mode, sensors } from './sensors.ts'
 import { saveSettings, settings } from './settings.ts'
-import { aimPoint, beamFx, closeStage, ctx, drawCrosshair, drawFx, hud, openStage, say, size, sparkFx, videoSize, view } from './stage.ts'
+import { createDetector, distanceOf, drawMarker, markerUnder, type Detector } from './markers.ts'
+import { aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hud, openStage, say, size, sparkFx, videoSize, view } from './stage.ts'
 import { onTrigger } from './trigger.ts'
 
 // Strumento a schermo intero sopra la fotocamera: HUD, ciclo di disegno e grilletto.
@@ -38,10 +39,11 @@ async function tool(html: string, onFire: ((x: number, y: number) => void) | nul
 // Calibrazione del mirino: si guarda lungo la canna e si trascina il mirino sull'oggetto puntato.
 export async function calibrateAim(done: () => void) {
   const start = { x: settings.offX, y: settings.offY }
+  let det: Detector | null = null
   const close = await tool(
     `<div class="hud-panel left">
        <b>Calibra il mirino</b>
-       <p>Metti il telefono nel fucile. Guarda lungo la canna e punta un oggetto a circa 3 metri.</p>
+       <p>Metti il telefono nel fucile. Guarda lungo la canna e punta un marker (o un oggetto) a circa 3 metri.</p>
        <p>Poi trascina il dito sullo schermo per spostare il mirino sopra l'oggetto.</p>
        <p data-off></p>
      </div>
@@ -53,11 +55,18 @@ export async function calibrateAim(done: () => void) {
     null,
     () => {
       const [x, y] = aimPoint()
-      drawCrosshair(x, y, false, settings.color)
+      det?.tick(performance.now())
+      const ms = det && performance.now() - det.state.at < 300 ? det.state.markers : []
+      ms.forEach((m) => drawMarker(ctx, m, '#ffd23f', 3))
+      drawCrosshair(x, y, !!markerUnder(ms, x, y), settings.color)
       hud.querySelector('[data-off]')!.textContent = `Spostamento: ${Math.round(settings.offX)}, ${Math.round(settings.offY)}`
     },
-    done,
+    () => {
+      det?.dispose()
+      done()
+    },
   )
+  det = createDetector()
   let last: [number, number] | null = null
   const stage = document.getElementById('stage')!
   const down = (e: PointerEvent) => {
@@ -267,4 +276,53 @@ export async function triggerTest(done: () => void) {
     () => {},
     done,
   )
+}
+
+// Prova mirino: i marker riconosciuti in tempo reale, con numero e distanza stimata. Serve a tarare la distanza massima in casa.
+export async function aimTest(done: () => void) {
+  let det: Detector | null = null
+  await tool(
+    `<div class="hud-panel left"><b>Prova mirino</b><p>Inquadra i marker stampati da diverse distanze. Il mirino si chiude quando sei sopra un marker: prova a sparare.</p><p data-info></p></div>
+     <div class="hud-panel right"><button class="btn small" data-a="annulla">Fine</button></div>`,
+    () => {
+      if (!det) return
+      const [ax, ay] = aimPoint()
+      play('pew')
+      beamFx(settings.color)
+      det.fresh().then((ms) => {
+        const m = markerUnder(ms, ax, ay)
+        if (!m) return sparkFx(ax, ay)
+        play('hit')
+        burstFx(ax, ay, [settings.color, '#ffffff', '#ffd23f'])
+        say(`Marker ${m.num} colpito!`, 900)
+      })
+    },
+    () => {
+      if (!det) return
+      const now = performance.now()
+      det.tick(now)
+      const ms = now - det.state.at < 300 ? det.state.markers : []
+      const [ax, ay] = aimPoint()
+      ctx.font = "800 20px 'Baloo 2 Variable', ui-rounded, system-ui, sans-serif"
+      ctx.textAlign = 'center'
+      for (const m of ms) {
+        drawMarker(ctx, m, '#ffd23f', 3)
+        const top = m.pts.reduce((a, p) => (p[1] < a[1] ? p : a))
+        const label = `N. ${m.num}  ${distanceOf(m).toFixed(1).replace('.', ',')} m`
+        ctx.lineWidth = 5
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+        ctx.fillStyle = '#fff'
+        ctx.strokeText(label, top[0], top[1] - 12)
+        ctx.fillText(label, top[0], top[1] - 12)
+      }
+      drawCrosshair(ax, ay, !!markerUnder(ms, ax, ay), settings.color)
+      hud.querySelector('[data-info]')!.textContent =
+        `Analisi: ${det.state.fps.toFixed(0)} al secondo, ${det.state.ms.toFixed(0)} ms ciascuna. Marker visti: ${ms.length ? ms.map((m) => m.num).join(', ') : 'nessuno'}`
+    },
+    () => {
+      det?.dispose()
+      done()
+    },
+  )
+  det = createDetector()
 }

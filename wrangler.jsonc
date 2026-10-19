@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "laser-tag-cartone",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-10-19",
+  "assets": {},
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // piano gratuito: solo Durable Objects con archivio SQLite
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+}
