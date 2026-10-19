@@ -139,13 +139,13 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const BODY = [[40,160],[330,160],[330,152],[380,152],[380,128],[330,128],[330,115],[172,115],[172,60],[164,52],[87.4,52],[78,5],[30,5],[55,115],[30,118],[8,128],[5,145],[15,156]];
 const HOLE = [[104,64],[160,64],[160,106],[106,106]];
 const HOLE_C = [[104,64],[160,64],[160,106],[142,106],[142,159.6],[104,159.6]];
-const LEVER = [[122,72],[126,70],[137,72],[137,122],[138,130],[134,136],[124,160],[122,182],[110,182],[112,160],[112.96,157],[116.6,155],[114.25,153],[121,132],[122,122]];
-const NOTCH = [116.6,155];
-const PIVOT = [130,128], ANCHOR = [109,140], STRAP = [52,22];
+const LEVER = [[122,72],[126,70],[137,72],[137,122],[138,130],[134,136],[124,160],[122,182],[110,182],[112,160],[121,132],[122,122]];
+const NOTCH = [137.5,80];
+const PIVOT = [130,128], ANCHOR = [166,86], STRAP = [52,22];
 
 const PARTS = {
-  fianco:    { name: 'Fianco', q: '4 strati', pdf: 'PDF pagine 2 e 3', col: '#c99a62', desc: "Quattro sagome uguali incollate: due esterne in cartone spesso e due centrali, una spessa e una sottile, con il vano dove scorre la leva. Ricalcale con le onde in verticale: il fucile si piega meno." },
-  leva:      { name: 'Leva del grilletto', q: '2 strati sottili', pdf: 'PDF pagina 4', col: '#d9a46a', desc: "Ruota sul perno. Quando tiri il grilletto, la punta va in avanti e il tampone tocca lo schermo. L'elastico, nascosto nel vano, riporta il grilletto in avanti." },
+  fianco:    { name: 'Fianco', q: '3 strati', pdf: 'PDF pagine 2 e 3', col: '#c99a62', desc: "Tre sagome uguali di cartone spesso incollate. Quella centrale ha in più il vano dove scorre la leva. Ricalcale con le onde in verticale: il fucile si piega meno." },
+  leva:      { name: 'Leva del grilletto', q: '1', pdf: 'PDF pagina 4', col: '#d9a46a', desc: "Ruota sul perno. Quando tiri il grilletto, la punta va in avanti e il tampone tocca lo schermo. L'elastico avvolto in basso sulla leva la riporta in avanti." },
   alluminio: { name: 'Striscia di alluminio', q: '1', pdf: 'Materiale', col: '#c9ced4', desc: "Va dal punto dove appoggi il dito fino al tampone. Porta il tocco del dito allo schermo: per questo il dito deve toccare il metallo, non il cartone." },
   tampone:   { name: 'Tampone di spugna', q: '1', pdf: 'Materiale', col: '#e8e2b0', desc: "Un centimetro di spugna morbida avvolta nell'alluminio, senza bordi vivi. Tocca lo schermo al centro del bordo basso, tra i due labbri." },
   guance:    { name: 'Guance', q: '2 + 2 spiedini', pdf: 'PDF pagina 4', col: '#e0a86a', desc: "Due rettangoli 52 x 48 mm incollati di piatto sui lati del fianco, sotto la scatola. Due spiedini li attraversano insieme al fianco: anche se la colla cede, non si staccano. Reggono il peso del telefono invece del bordo stretto del fianco." },
@@ -156,7 +156,7 @@ const PARTS = {
   elastici:  { name: 'Elastici grandi', q: '2', pdf: 'Materiale', col: '#d4574a', desc: "Due elastici da ufficio grandi attorno alle estremità della scatola tengono chiuso il coperchio." },
   squadrette:{ name: 'Squadrette', q: '3', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Due sotto il fondo, tra fondo e guance, una dietro lo schienale sopra la canna. Tengono la scatola dritta." },
   perno:     { name: 'Perno', q: '1 spiedino', pdf: 'Materiale', col: '#e2c79a', desc: "Uno spiedino di legno che attraversa i tre strati e la leva. Si taglia a filo dopo averlo infilato." },
-  ritorno:   { name: 'Stecchino ed elastico', q: '1 + 1', pdf: 'Materiale', col: '#d4574a', desc: "Lo stecchino attraversa solo i due strati esterni e passa dentro il vano della leva, dietro di lei. L'elastico va dalla tacca sul bordo posteriore della leva, sopra il perno, allo stecchino: resta nascosto nel fianco e riporta il grilletto in avanti." },
+  ritorno:   { name: 'Stecchino ed elastico', q: '1 + 1', pdf: 'Materiale', col: '#d4574a', desc: "Lo stecchino attraversa i tre strati davanti al buco del dito. L'elastico si avvolge attorno alla parte bassa della leva e attorno allo stecchino, e riporta il grilletto in avanti." },
   laccetto:  { name: 'Laccetto da polso', q: '1', pdf: 'Materiale', col: '#3c8a8a', desc: "Un cordino nel foro dell'impugnatura, da mettere al polso. Se il fucile scivola di mano, il telefono non cade." },
   telefono:  { name: 'Telefono con cover', q: '1', pdf: 'Lo metti tu', col: '#8a7fd0', desc: "In orizzontale, schermo verso di te, fotocamera posteriore a un'estremità. La cover resta sempre su." },
 };
@@ -285,9 +285,9 @@ function mover(obj, ex) {
 // fianco: tre strati
 const strapHole = () => circ(STRAP[0], STRAP[1], 4);
 const outerShape = () => shape(BODY, [poly(HOLE), strapHole(), circ(PIVOT[0], PIVOT[1], 1.6), circ(ANCHOR[0], ANCHOR[1], 1.1)]);
-const centerShape = shape(BODY, [poly(HOLE_C), strapHole()]);
-// 4 strati: esterno 4 mm, centrale spesso 4 mm, centrale sottile 2 mm, esterno 4 mm
-[[-7, 4, 0xcfa06a, -55, false], [-3, 4, 0xc4955e, -20, true], [1, 2, 0xe6c9a0, 20, true], [3, 4, 0xcfa06a, 55, false]].forEach(([z, d, col, ex, center]) => {
+const centerShape = shape(BODY, [poly(HOLE_C), strapHole(), circ(ANCHOR[0], ANCHOR[1], 1.1)]);
+// 3 strati di cartone spesso da 4 mm, il centrale con il vano della leva
+[[-6, 4, 0xcfa06a, -55, false], [-2, 4, 0xc4955e, 0, true], [2, 4, 0xcfa06a, 55, false]].forEach(([z, d, col, ex, center]) => {
   const g = extrude(center ? centerShape : outerShape(), d);
   g.translate(0, 0, z);
   addMesh('fianco', g, kraft(col), gun, [0, 0, ex]);
@@ -299,8 +299,8 @@ leverPivot.position.set(PIVOT[0], PIVOT[1], 0);
 gun.add(leverPivot);
 mover(leverPivot, [0, 0, 0]);
 {
-  const g = extrude(shape(LEVER, [circ(PIVOT[0], PIVOT[1], 1.6)]), 4);
-  g.translate(-PIVOT[0], -PIVOT[1], -2);
+  const g = extrude(shape(LEVER, [circ(PIVOT[0], PIVOT[1], 1.6)]), 3.6);
+  g.translate(-PIVOT[0], -PIVOT[1], -1.8);
   addMesh('leva', g, kraft(0xdcab72), leverPivot);
   const foil = new THREE.MeshStandardMaterial({ color: 0xd7dce2, metalness: 0.85, roughness: 0.32 });
   const path = new THREE.CatmullRomCurve3([[137.4, 74], [137.4, 120], [135.5, 134], [124.5, 160], [121.8, 176]]
@@ -318,7 +318,7 @@ mover(spessoriGroup, [0, 95, 0]);
 const gancioGroup = new THREE.Group();
 const woodMat = new THREE.MeshStandardMaterial({ color: 0xe0c08f, roughness: 0.8 });
 for (const side of [1, -1]) {
-  addMesh('guance', boxGeo(134, 186, 112, 160, side > 0 ? 7 : -11, side > 0 ? 11 : -7), kraft(0xe0a86a), gun, [0, -10, side * 40]);
+  addMesh('guance', boxGeo(134, 186, 112, 160, side > 0 ? 6 : -10, side > 0 ? 10 : -6), kraft(0xe0a86a), gun, [0, -10, side * 40]);
 }
 for (const [xx, yy] of [[150, 124], [172, 146]]) {
   const sk = new THREE.CylinderGeometry(1.5, 1.5, 28, 16); sk.rotateX(Math.PI / 2);
@@ -351,7 +351,7 @@ addMesh('labbri', boxGeo(124, 128, 164, 174, 20, 89), kraft(0xb5864f), gun, [-30
   addMesh('squadrette', tri, kraft(0xbf905a), gun, [80, 40, 0]);
   for (const side of [1, -1]) {
     const t = extrude(shape([[0, 0], [40, 0], [0, -32]]), 4);
-    t.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 138, 0, 1, 0, 160, side, 0, 0, side * 11, 0, 0, 0, 1));
+    t.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 138, 0, 1, 0, 160, side, 0, 0, side * 10, 0, 0, 0, 1));
     addMesh('squadrette', t, kraft(0xbf905a), gun, [0, 10, side * 55]);
   }
 }
