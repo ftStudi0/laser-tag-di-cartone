@@ -143,6 +143,11 @@ h3 {
   box-shadow: 0 0 0 3px var(--ink);
   transform: scale(1.1);
 }
+/* colore già preso da un'altra giocatrice */
+.sw:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
 
 button {
   font: inherit;

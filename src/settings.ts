@@ -8,7 +8,7 @@ export const MODELS: Record<string, [string, number]> = {
   altro: ['Altro telefono', 63],
 }
 
-export const COLORS = ['#ff5a5f', '#ff9f1c', '#ffd23f', '#2ec27e', '#3d8bfd', '#a66cff', '#ff6fb5', '#00b8c4']
+export { COLORS } from './rules.ts'
 
 const DEFAULTS = {
   name: '',

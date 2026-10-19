@@ -1,7 +1,7 @@
 // Controllo della logica pura: npm run check
 import assert from 'node:assert/strict'
 import { D, deviceQuat, dirFrom, forward, fovFromFocal, inPoly, project, qRot, solveFocal, viewFor, yawOf } from './math.ts'
-import { claim, DEFAULT_CONFIG, OUT_MS, resetForRound, SAFE_MS, sharedTargets, shoot, standings, type Player, type Room } from './rules.ts'
+import { claim, COLORS, DEFAULT_CONFIG, freeColor, OUT_MS, resetForRound, SAFE_MS, sharedTargets, shoot, standings, type Player, type Room } from './rules.ts'
 import { insertRecord } from './settings.ts'
 import { schedule, zDist, ZOMBIE, zombieSchedule } from './targets.ts'
 
@@ -101,6 +101,10 @@ const solo: Room = { ...lt, config: { ...DEFAULT_CONFIG }, pausedAt: 0, players:
 shoot(solo, solo.players[0], 5, now)
 shoot(solo, solo.players[0], 1, now + 300)
 assert.equal(solo.players[0].score, 1)
+// colori: chi chiede un colore già preso riceve il primo libero
+pa.color = COLORS[0]
+assert.equal(freeColor(lt, pb, COLORS[0]), COLORS[1])
+assert.equal(freeColor(lt, pa, COLORS[0]), COLORS[0])
 lt.pausedAt = now
 assert.equal(shoot(lt, pc, 2, (now += 300)), null) // in pausa non si spara
 

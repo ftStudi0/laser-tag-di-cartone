@@ -61,6 +61,7 @@ export type ClientMsg =
   | { t: 'ping'; c: number }
   | { t: 'ready'; ready: Ready }
   | { t: 'marker'; marker: number }
+  | { t: 'color'; color: string }
   | { t: 'config'; config: Partial<Config> }
   | { t: 'team'; id: string }
   | { t: 'start' }
@@ -83,6 +84,12 @@ export const RATE_MS = 300
 export const COUNTDOWN_MS = 3000
 export const REST_MS = 60_000
 export const MAX_MARKER = 12
+export const COLORS = ['#ff5a5f', '#ff9f1c', '#ffd23f', '#2ec27e', '#3d8bfd', '#a66cff', '#ff6fb5', '#00b8c4']
+// Il colore che si vuole, se nessun altro ce l'ha; altrimenti il primo libero.
+export const freeColor = (r: Room, p: Player | null, want: string) => {
+  const used = r.players.filter((o) => o !== p).map((o) => o.color)
+  return COLORS.includes(want) && !used.includes(want) ? want : (COLORS.find((c) => !used.includes(c)) ?? COLORS[0])
+}
 export const TEAMS = [
   { name: 'Squadra Arancio', color: '#ff9f1c' },
   { name: 'Squadra Blu', color: '#3d8bfd' },

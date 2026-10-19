@@ -3,7 +3,7 @@
 import { DurableObject } from 'cloudflare:workers'
 import type { Target } from '../src/targets.ts'
 import {
-  CALIBRATE_MS, claim, COUNTDOWN_MS, DEFAULT_CONFIG, DURATIONS, endAt, MAX_MARKER, participants, REFS, resetForRound, REST_MS, running, sharedTargets, shoot, standings,
+  CALIBRATE_MS, claim, COUNTDOWN_MS, DEFAULT_CONFIG, DURATIONS, endAt, freeColor, MAX_MARKER, participants, REFS, resetForRound, REST_MS, running, sharedTargets, shoot, standings,
   type ClientMsg, type Config, type Ev, type Room as RoomState, type ServerMsg,
 } from '../src/rules.ts'
 
@@ -113,6 +113,10 @@ export class Room extends DurableObject<Env> {
       case 'marker':
         me.marker = clampMarker(m.marker)
         break
+      case 'color':
+        if (r.phase !== 'lobby' || freeColor(r, me, m.color) !== m.color) return // già preso da un altro
+        me.color = m.color
+        break
       case 'reload':
         me.ammo = r.config.ammo
         break
@@ -200,7 +204,7 @@ export class Room extends DurableObject<Env> {
       if (r.players.length >= 8) return this.send(ws, { t: 'error', msg: 'La partita è piena.' })
       const t0 = r.players.filter((p) => p.team === 0).length
       p = {
-        id: crypto.randomUUID().slice(0, 8), name, color: m.color, marker: clampMarker(m.marker), team: t0 > r.players.length - t0 ? 1 : 0,
+        id: crypto.randomUUID().slice(0, 8), name, color: freeColor(r, null, m.color), marker: clampMarker(m.marker), team: t0 > r.players.length - t0 ? 1 : 0,
         ready: { cam: false, sens: false, gyro: false, cal: false, gun: false }, online: true,
         life: 0, ammo: 0, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0,
       }
@@ -212,7 +216,7 @@ export class Room extends DurableObject<Env> {
     p.online = true
     if (r.phase === 'lobby') {
       p.name = name
-      p.color = m.color
+      p.color = freeColor(r, p, m.color)
     }
     // un solo socket per giocatore: chiude quello vecchio se c'è
     for (const o of this.ctx.getWebSockets()) {

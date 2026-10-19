@@ -4,7 +4,7 @@ import { fmt, playSolo } from './game.ts'
 import { icon } from './icons.ts'
 import { playLaser, shooterColor } from './lasertag.ts'
 import { connect, createRoom, type Net } from './net.ts'
-import { isReady, REFS, remaining, SHARED_SIZE, markerTaken as taken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
+import { COLORS, isReady, REFS, remaining, SHARED_SIZE, markerTaken as taken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
 import type { Theme } from './targets.ts'
 import { THEMES } from './themes.ts'
 import { mode, sensors, startSensors } from './sensors.ts'
@@ -260,6 +260,10 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
           <div class="mine-box">
             ${c.game === 'laser' ? `<label class="field inline">Il mio marker
               <select data-marker>${Array.from({ length: MAX_MARKER }, (_, i) => `<option ${i + 1 === me!.marker ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>` : ''}
+            <div class="swatches" role="radiogroup" aria-label="Il mio colore">${COLORS.map((col, i) => {
+              const taken = r.players.some((o) => o !== me && o.color === col)
+              return `<button class="sw ${col === me!.color ? 'on' : ''}" data-pcolor="${col}" style="--c:${col}" role="radio" aria-checked="${col === me!.color}" aria-label="Colore ${i + 1}${taken ? ', già preso' : ''}" ${taken ? 'disabled' : ''}></button>`
+            }).join('')}</div>
             <button class="btn ${me!.ready.gun ? '' : 'primary'}" data-ready>${me!.ready.gun ? 'Fucile non pronto' : `${icon('target', 20)}Ho il fucile pronto`}</button>
           </div>
           ${me && !me.ready.cal && me.ready.gun ? '<p class="note">Il mirino non è calibrato: fallo da Prepara il fucile per colpire meglio.</p>' : ''}` : ''}
@@ -282,6 +286,11 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
     settings.marker = Number((e.target as HTMLSelectElement).value)
     saveSettings()
     net.send({ t: 'marker', marker: settings.marker })
+  })
+  on('[data-pcolor]', (el) => {
+    settings.color = el.dataset.pcolor!
+    saveSettings()
+    net.send({ t: 'color', color: settings.color })
   })
   on('[data-ready]', async () => {
     if (me!.ready.gun) return net.send({ t: 'ready', ready: { ...me!.ready, gun: false } })
