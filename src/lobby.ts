@@ -1,15 +1,22 @@
 import qrcode from 'qrcode-generator'
 import { setVolume } from './audio.ts'
-import { fmt } from './game.ts'
+import { fmt, playSolo } from './game.ts'
 import { icon } from './icons.ts'
 import { playLaser } from './lasertag.ts'
 import { connect, createRoom, type Net } from './net.ts'
-import { isReady, remaining, markerTaken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
-import { startSensors } from './sensors.ts'
+import { isReady, remaining, markerTaken as taken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
+import type { Theme } from './targets.ts'
+import { THEMES } from './themes.ts'
+import { mode, startSensors } from './sensors.ts'
 import { saveSettings, settings } from './settings.ts'
 import { app, esc, goFullscreen, on, render } from './ui.ts'
 
 const MODES = { ffa: 'Tutti contro tutti', squadre: 'Due squadre' }
+const GAMES = { laser: 'Laser tag', sfida: 'Sfida a bersagli' }
+const DIFFS = { facile: 'Facile', media: 'Media', difficile: 'Difficile' }
+// i numeri doppi contano solo nel laser tag, dove il marker è il bersaglio
+const markerTaken = (r: Room, p: Player) => r.config.game === 'laser' && taken(r, p)
+const summary = (c: Config) => (c.game === 'sfida' ? `${GAMES.sfida}: ${THEMES[c.theme]}, ${DIFFS[c.diff]}` : `${GAMES.laser}: ${MODES[c.mode]}`) + `, ${fmt(c.duration)}`
 let back: () => void = () => {}
 
 // Crea partita: questo telefono diventa il regista.
@@ -106,13 +113,20 @@ function enter(code: string) {
     if (view === 'gioco' && r.phase === 'gioco') {
       if (!plays) return board(net)
       if (app.hidden) return
+      if (r.config.game === 'sfida' && mode() !== 'giroscopio' && mode() !== 'bussola') {
+        view = 'fuori'
+        alert('Questo telefono non sa quando ti giri, quindi non vede i bersagli intorno. Per lui arriverà la modalità Bersagli sui muri.')
+        return show()
+      }
       app.hidden = true
       goFullscreen()
-      playLaser(net, () => {
+      const back = () => {
         app.hidden = false
         if (net.room?.phase === 'gioco') view = 'fuori' // uscito a metà: può rientrare
-        net.onState(net.room!) // la fine del round l'ha vista il gioco: ora la vede la lobby
-      })
+        net.onState(net.room!) // la fine del round può averla vista il gioco: ora la vede la lobby
+      }
+      if (r.config.game === 'laser') playLaser(net, back)
+      else playChallenge(net, back)
       return
     }
     if (view === 'risultati' && r.results) return results(r, r.results, () => ((view = 'lobby'), show()))
@@ -121,13 +135,42 @@ function enter(code: string) {
   }
 }
 
+// Sfida a bersagli: il gioco da soli, con seme, tempo e pausa del server. Ognuno spara ai suoi bersagli.
+function playChallenge(net: Net, done: () => void) {
+  const r = net.room!
+  const c = r.config
+  playSolo({ theme: c.theme, diff: c.diff, duration: c.duration }, done, {
+    seed: r.seed,
+    clock: () => {
+      const room = net.room!
+      const now = net.serverNow()
+      return { t: now < room.startAt ? (now - room.startAt) / 1000 : (room.config.duration * 1000 - remaining(room, now)) / 1000, paused: !!room.pausedAt }
+    },
+    ended: () => net.room?.phase !== 'gioco',
+    isDir: r.dirId === net.me,
+    pause: (on) => net.send({ t: 'pause', on }),
+    report: (s) => net.send({ t: 'score', ...s }),
+    board: () => [...participants(net.room!)].sort((a, b) => b.score - a.score).map((p) => ({ name: p.name, score: p.score, me: p.id === net.me })),
+  })
+}
+
 function rulesHtml(c: Config) {
-  const rules: [string, string, string][] = [
+  const ammo = c.diff !== 'facile'
+  if (c.game === 'sfida') return rulesBox([
+    ['target', 'Si spara', 'I bersagli compaiono intorno a te: girati, mira e tocca il grilletto. Tutti hanno gli stessi bersagli.'],
+    ['up', 'Si ricarica', ammo ? 'Hai 10 colpi. Per ricaricare alza il fucile verso il soffitto.' : 'In Facile i colpi sono infiniti.'],
+    ['heart', 'Attenzione', c.theme === 'zombi' ? 'Se uno zombi ti arriva vicino ti fa il solletico: un punto in meno.' : 'Non colpire il gattino col cuore: toglie 2 punti.'],
+    ['crown', 'Si vince', 'Vince chi ha più punti alla fine. La classifica si vede durante la sfida.'],
+  ])
+  return rulesBox([
     ['zap', 'Si spara', 'Metti il mirino sul foglio di un avversario e tocca il grilletto.'],
     ['up', 'Si ricarica', c.ammo ? `Hai ${c.ammo} colpi. Per ricaricare alza il fucile verso il soffitto.` : 'Colpi infiniti in questa partita.'],
     ['heart', 'Fuori gioco', `Hai ${c.life} cuori. Quando finiscono stai fuori 8 secondi, poi rientri con lo scudo.`],
     ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra con più punti. Non si colpiscono i compagni.' : '1 punto per ogni colpo, 3 in più quando mandi qualcuno fuori gioco.'],
-  ]
+  ])
+}
+
+function rulesBox(rules: [string, string, string][]) {
   return `<div class="rules">${rules.map(([i, t, d]) => `<div class="rule">${icon(i, 34)}<b>${t}</b><small>${d}</small></div>`).join('')}</div>`
 }
 
@@ -140,14 +183,15 @@ function qrSvg(text: string) {
 
 function chips(p: Player, r: Room) {
   const c = (ok: boolean, label: string) => `<span class="mini ${ok ? 'ok' : ''}">${label}</span>`
-  return `${c(p.ready.gun, 'fucile')}${c(p.ready.sens, 'sensori')}${c(p.ready.cam, 'fotocamera')}${c(p.ready.cal, 'mirino')}${markerTaken(r, p) ? '<span class="mini warn">numero doppio</span>' : ''}`
+  const sens = r.config.game === 'sfida' ? c(p.ready.gyro, 'giroscopio') : c(p.ready.sens, 'sensori')
+  return `${c(p.ready.gun, 'fucile')}${sens}${c(p.ready.cam, 'fotocamera')}${c(p.ready.cal, 'mirino')}${markerTaken(r, p) ? '<span class="mini warn">numero doppio</span>' : ''}`
 }
 
 function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave: () => void) {
   const c = r.config
   const ps = participants(r)
   const online = ps.filter((p) => p.online)
-  const allReady = online.length > 0 && online.every((p) => isReady(p) && !markerTaken(r, p))
+  const allReady = online.length > 0 && online.every((p) => isReady(p, c) && !markerTaken(r, p))
   const resting = r.restUntil > net.serverNow()
   const link = `${location.origin}/?r=${r.code}`
   const iPlay = !!me && (!isDir || c.plays)
@@ -155,16 +199,21 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
     `<div class="seg">${opts.map(([v, l]) => `<button class="${c[key] === v ? 'on' : ''}" data-cfg="${key}" data-v='${JSON.stringify(v)}'>${l}</button>`).join('')}</div>`
 
   render(`
-    <header class="bar"><button class="btn small" data-leave>${icon('back', 20)}Esci</button><h2>Laser tag</h2>
+    <header class="bar"><button class="btn small" data-leave>${icon('back', 20)}Esci</button><h2>${GAMES[c.game]}</h2>
       <span class="chip warn" data-net ${net.online ? 'hidden' : ''}>Riconnessione...</span></header>
     <div class="lobby">
       <section>
-        <div class="code-box">${isDir ? `<div class="qr">${qrSvg(link)}</div>` : ''}<div><small>Codice della partita</small><b>${r.code}</b>${isDir ? '<small>Gli altri toccano Entra in partita e scrivono il codice, oppure inquadrano il QR.</small>' : `<small>${MODES[c.mode]}, ${fmt(c.duration)}</small>`}</div></div>
+        <div class="code-box">${isDir ? `<div class="qr">${qrSvg(link)}</div>` : ''}<div><small>Codice della partita</small><b>${r.code}</b>${isDir ? '<small>Gli altri toccano Entra in partita e scrivono il codice, oppure inquadrano il QR.</small>' : `<small>${summary(c)}</small>`}</div></div>
         ${isDir ? `
-          <h3>Gioco</h3>${seg('mode', [['ffa', MODES.ffa], ['squadre', MODES.squadre]])}
+          <h3>Gioco</h3>${seg('game', [['laser', GAMES.laser], ['sfida', GAMES.sfida]])}
+          ${c.game === 'laser' ? `
+          <h3>Come si gioca</h3>${seg('mode', [['ffa', MODES.ffa], ['squadre', MODES.squadre]])}
           <h3>Durata</h3>${seg('duration', [[120, '2 min'], [180, '3 min'], [300, '5 min']])}
           <div class="two"><div><h3>Cuori</h3>${seg('life', [[3, '3'], [5, '5'], [7, '7']])}</div>
-          <div><h3>Colpi</h3>${seg('ammo', [[10, '10, poi ricarica'], [0, 'Infiniti']])}</div></div>
+          <div><h3>Colpi</h3>${seg('ammo', [[10, '10, poi ricarica'], [0, 'Infiniti']])}</div></div>` : `
+          <h3>Tema</h3>${seg('theme', (Object.keys(THEMES) as Theme[]).map((t) => [t, THEMES[t]]))}
+          <div class="two"><div><h3>Difficoltà</h3>${seg('diff', Object.entries(DIFFS))}</div>
+          <div><h3>Durata</h3>${seg('duration', [[60, '1 min'], [90, '1½ min'], [120, '2 min']])}</div></div>`}
           <h3>Il regista</h3>${seg('plays', [[true, 'Gioco anche io'], [false, 'Faccio solo il regista']])}
           <label class="field">Volume per tutti <input type="range" min="0" max="1" step="0.1" value="${r.volume}" data-vol></label>`
         : rulesHtml(c)}
@@ -176,13 +225,13 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
             <span class="dot" style="--c:${p.color}"></span>
             <span class="pname"><b>${esc(p.name)}${p.id === net.me ? ' (tu)' : ''}${p.id === r.dirId ? ' · regista' : ''}</b>
               <span class="mchips">${p.online ? chips(p, r) : '<span class="mini">disconnesso</span>'}</span></span>
-            <span class="num" title="Numero del marker">${p.marker}</span>
-            ${c.mode === 'squadre' ? `<button class="team t${p.team}" data-team="${p.id}" ${isDir ? '' : 'disabled'}>${TEAMS[p.team].name.replace('Squadra ', '')}</button>` : ''}
+            ${c.game === 'laser' ? `<span class="num" title="Numero del marker">${p.marker}</span>` : ''}
+            ${c.game === 'laser' && c.mode === 'squadre' ? `<button class="team t${p.team}" data-team="${p.id}" ${isDir ? '' : 'disabled'}>${TEAMS[p.team].name.replace('Squadra ', '')}</button>` : ''}
           </li>`).join('') || '<li class="note">Ancora nessuno. Fai entrare gli altri con il codice.</li>'}</ul>
         ${iPlay ? `
           <div class="mine-box">
-            <label class="field inline">Il mio marker
-              <select data-marker>${Array.from({ length: MAX_MARKER }, (_, i) => `<option ${i + 1 === me!.marker ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>
+            ${c.game === 'laser' ? `<label class="field inline">Il mio marker
+              <select data-marker>${Array.from({ length: MAX_MARKER }, (_, i) => `<option ${i + 1 === me!.marker ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label>` : ''}
             <button class="btn ${me!.ready.gun ? '' : 'primary'}" data-ready>${me!.ready.gun ? 'Fucile non pronto' : `${icon('target', 20)}Ho il fucile pronto`}</button>
           </div>
           ${me && !me.ready.cal && me.ready.gun ? '<p class="note">Il mirino non è calibrato: fallo da Prepara il fucile per colpire meglio.</p>' : ''}` : ''}
@@ -217,7 +266,7 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
       cam = true
     } catch {}
     if (!cam) alert('La fotocamera non si apre. Controlla il permesso nelle impostazioni del browser.')
-    net.send({ t: 'ready', ready: { gun: true, cam, sens: m !== 'spenti' && m !== 'negato', cal: !!(settings.offX || settings.offY) } })
+    net.send({ t: 'ready', ready: { gun: true, cam, sens: m !== 'spenti' && m !== 'negato', gyro: m === 'giroscopio' || m === 'bussola', cal: !!(settings.offX || settings.offY) } })
   })
 }
 
@@ -231,13 +280,15 @@ function inGame(r: Room, rejoin: () => void) {
 }
 
 function results(r: Room, s: Standing[], toLobby: () => void) {
-  const teams = r.config.mode === 'squadre' ? teamScores(s) : null
+  const sfida = r.config.game === 'sfida'
+  const teams = !sfida && r.config.mode === 'squadre' ? teamScores(s) : null
   const win = teams ? (teams[0] === teams[1] ? -1 : teams[0] > teams[1] ? 0 : 1) : -1
   render(`
     <header class="bar"><h2>Fine partita!</h2></header>
     ${teams ? `<div class="teams-score">${[0, 1].map((t) => `<div class="ts t${t} ${win === t ? 'win' : ''}"><small>${TEAMS[t].name}</small><b>${teams[t]}</b>${win === t ? `<span>${icon('crown', 18)} Vince!</span>` : ''}</div>`).join('')}</div>${win < 0 ? '<p class="badge">Pareggio!</p>' : ''}` : ''}
-    <table class="rec"><tr><th></th><th>Nome</th><th>Punti</th><th>Colpi</th><th>Mandati fuori</th><th>Precisione</th></tr>
-    ${s.map((p, i) => `<tr><td>${i + 1}</td><td><span class="dot" style="--c:${p.color}"></span> ${esc(p.name)}</td><td>${p.score}</td><td>${p.hits}</td><td>${p.elims}</td><td>${Math.round(p.acc * 100)}%</td></tr>`).join('')}</table>
+    <table class="rec"><tr><th></th><th>Nome</th><th>Punti</th>${sfida ? '<th>Precisione</th><th>Serie migliore</th>' : '<th>Colpi</th><th>Mandati fuori</th><th>Precisione</th>'}</tr>
+    ${s.map((p, i) => `<tr><td>${i + 1}</td><td><span class="dot" style="--c:${p.color}"></span> ${esc(p.name)}</td><td>${p.score}</td>${
+      sfida ? `<td>${Math.round(p.acc * 100)}%</td><td>${p.best}</td>` : `<td>${p.hits}</td><td>${p.elims}</td><td>${Math.round(p.acc * 100)}%</td>`}</tr>`).join('')}</table>
     <div class="row"><button class="big primary" data-lobby>${icon('users', 30)}Torna alla lobby</button></div>`)
   on('[data-lobby]', toLobby)
 }
@@ -271,14 +322,17 @@ function updateBoard(net: Net) {
   const b = app.querySelector('[data-bpause]')!
   b.innerHTML = r.pausedAt ? `${icon('play', 30)}Riprendi` : `${icon('pause', 30)}Pausa per tutti`
   const ps = [...participants(r)].sort((a, b) => b.score - a.score)
-  const teams = r.config.mode === 'squadre' ? teamScores(ps.map((p) => ({ ...p, acc: 0 }))) : null
+  const sfida = r.config.game === 'sfida'
+  const teams = !sfida && r.config.mode === 'squadre' ? teamScores(ps.map((p) => ({ ...p, acc: 0 }))) : null
   box.innerHTML = `${teams ? `<div class="teams-score">${[0, 1].map((t) => `<div class="ts t${t}"><small>${TEAMS[t].name}</small><b>${teams[t]}</b></div>`).join('')}</div>` : ''}
     <ul class="players">${ps.map((p) => {
       const st = status(p, now)
       const life = p.life <= 0 && now >= p.outUntil ? r.config.life : p.life
+      const info = sfida
+        ? `<span class="mini">precisione ${p.shots ? Math.round((p.hits / p.shots) * 100) : 0}%</span>${p.online ? '' : '<span class="mini">disconnesso</span>'}`
+        : `<span class="mini ${st === 'in gioco' ? 'ok' : st === 'fuori' ? 'warn' : ''}">${p.online ? st : 'disconnesso'}</span><span class="hearts">${icon('heart', 14).repeat(Math.max(0, life))}</span>`
       return `<li class="${p.online ? '' : 'off'}"><span class="dot" style="--c:${p.color}"></span>
-        <span class="pname"><b>${esc(p.name)}</b><span class="mchips"><span class="mini ${st === 'in gioco' ? 'ok' : st === 'fuori' ? 'warn' : ''}">${p.online ? st : 'disconnesso'}</span>
-        <span class="hearts">${icon('heart', 14).repeat(Math.max(0, life))}</span></span></span>
+        <span class="pname"><b>${esc(p.name)}</b><span class="mchips">${info}</span></span>
         <b class="pscore">${p.score}</b></li>`
     }).join('')}</ul>`
 }

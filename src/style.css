@@ -1016,6 +1016,27 @@ input[type='checkbox'] {
   color: #ff6fb5;
 }
 
+/* classifica in diretta della Sfida, sotto il punteggio */
+.live {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 4px 0 0;
+  border-top: 2px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+  max-width: 120px;
+}
+.live li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.live li.mine {
+  color: var(--primary-dark);
+}
+
 /* HUD del laser tag */
 .lt-life {
   display: flex;

@@ -68,9 +68,10 @@ Il gioco va su `https://laser-tag-cartone.<tuo-sottodominio>.workers.dev`. Il Du
 
 I tipi del Worker (`worker/worker-configuration.d.ts`) si rigenerano da soli a ogni build; a mano: `npm run types`.
 
-## Laser tag
+## Partite in gruppo
 
-- Stampa i marker da **Stampa i marker** (un foglio A4 per giocatore, due copie: petto e schiena). Stampa al 100%.
+- Il regista sceglie **Laser tag** oppure **Sfida a bersagli** (stessi bersagli per tutti, ognuno spara ai suoi, classifica in diretta; serve il giroscopio).
+- Per il laser tag stampa i marker da **Stampa i marker** (un foglio A4 per giocatore, due copie: petto e schiena). Stampa al 100%.
 - Un telefono tocca **Crea partita** e diventa il regista: mostra il codice di 4 lettere e il QR. Può giocare anche lui o fare solo da arbitro (plancia con punteggi e comandi).
 - Gli altri toccano **Entra in partita**, scrivono il codice (o inquadrano il QR), scelgono il numero del proprio marker e toccano **Ho il fucile pronto**.
 - Al server arrivano solo eventi di gioco (numero del marker colpito, stato). Le immagini della fotocamera restano sul telefono. La stanza si cancella da sola 30 minuti dopo che è rimasta vuota.

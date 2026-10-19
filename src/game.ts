@@ -10,27 +10,38 @@ import { azAt, DIFF, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSche
 import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
 import { onTrigger } from './trigger.ts'
+import { esc } from './ui.ts'
 
 export type GameOpts = { theme: Theme; diff: Diff; duration: number } // duration 0 = allenamento
 export type Result = GameOpts & { score: number; shots: number; good: number; best: number; rank: number }
+// Sfida a bersagli: stesso gioco, ma seme, tempo e pausa arrivano dal server e i punti vanno a lui.
+export type Multi = {
+  seed: number
+  clock: () => { t: number; paused: boolean } // secondi dall'inizio (negativi prima del via)
+  ended: () => boolean
+  isDir: boolean
+  pause: (on: boolean) => void
+  report: (s: { score: number; shots: number; good: number; best: number }) => void
+  board: () => { name: string; score: number; me: boolean }[]
+}
 
 const AMMO = 10
 const RELOAD_PITCH = 60 * D
 const FLY = 0.4 // secondi dell'animazione "vola via"
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
 
-export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void) {
-  const training = opts.duration === 0
+export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void, multi?: Multi) {
+  const training = opts.duration === 0 && !multi
   const sizeMul = mode() === 'bussola' ? 1.5 : 1 // la bussola trema: bersagli più grandi
   const useAmmo = DIFF[opts.diff].ammo && !training
   const zombi = opts.theme === 'zombi'
-  const seed = (Math.random() * 2 ** 32) >>> 0
+  const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
   const targets: Target[] = training ? [] : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
   const color = settings.color
   const H = settings.gunH // altezza degli occhi sul pavimento virtuale
   let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
 
-  let phase: 'mira' | 'via' | 'gioco' | 'fine' = 'mira'
+  let phase: 'mira' | 'via' | 'gioco' | 'fine' = multi ? 'via' : 'mira' // nella Sfida la direzione zero si prende al via
   let paused = false
   let recenter = false
   let gameT = 0
@@ -48,38 +59,40 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   hud.innerHTML = `
     <div class="hud-tl pill" data-ammo></div>
     <div class="hud-tr">
-      <button class="hud-btn" data-a="pausa" aria-label="Pausa">${icon('pause')}</button>
+      ${!multi || multi.isDir ? `<button class="hud-btn" data-a="pausa" aria-label="Pausa">${icon('pause')}</button>` : ''}
       <button class="hud-btn" data-a="ricentra" aria-label="Ricentra">${icon('recenter')}</button>
       <button class="hud-btn" data-a="esci" aria-label="Esci">${icon('close')}</button>
     </div>
-    <div class="hud-ml pill"><b data-score>0</b><small>punti</small><small data-streak></small></div>
+    <div class="hud-ml pill"><b data-score>0</b><small>punti</small><small data-streak></small>${multi ? '<ol class="live" data-live></ol>' : ''}</div>
     <div class="hud-mr pill"><b data-time>${training ? 'Allenamento' : fmt(opts.duration)}</b></div>
     <div class="hud-msg" hidden></div>
-    <div class="hud-full" data-pause hidden>Pausa<small>Tocca ${icon('play', 18)} in alto a destra per riprendere</small></div>
+    <div class="hud-full" data-pause hidden>Pausa<small>${multi && !multi.isDir ? 'Aspetta il regista' : `Tocca ${icon('play', 18)} in alto a destra per riprendere`}</small></div>
     <div class="hud-full" data-portrait hidden>Gira il telefono in orizzontale</div>
     <pre class="hud-debug" data-debug ${settings.debug ? '' : 'hidden'}></pre>`
   const $ = (s: string) => hud.querySelector<HTMLElement>(`[data-${s}]`)!
-  const pauseBtn = hud.querySelector<HTMLElement>('[data-a="pausa"]')!
+  const pauseBtn = hud.querySelector<HTMLElement>('[data-a="pausa"]')
 
   const setPaused = (p: boolean) => {
     paused = p
     $('pause').hidden = !p
+    if (!pauseBtn) return
     pauseBtn.innerHTML = icon(p ? 'play' : 'pause')
     pauseBtn.setAttribute('aria-label', p ? 'Riprendi' : 'Pausa')
   }
 
   hud.querySelector('.hud-tr')!.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest('button')?.dataset.a
-    if (a === 'esci') finish(true)
-    if (a === 'pausa' && phase === 'gioco') setPaused(!paused)
+    if (a === 'esci' && (!multi || confirm('Esci dalla sfida? Puoi rientrare dalla lobby.'))) finish(true)
+    if (a === 'pausa' && multi) multi.pause(!paused)
+    else if (a === 'pausa' && phase === 'gioco') setPaused(!paused)
     if (a === 'ricentra' && phase === 'gioco') {
       recenter = true
-      setPaused(false)
+      if (!multi) setPaused(false)
       say('Punta davanti a te e premi il grilletto')
     }
   })
 
-  const onHide = () => document.visibilityState === 'hidden' && phase === 'gioco' && setPaused(true)
+  const onHide = () => !multi && document.visibilityState === 'hidden' && phase === 'gioco' && setPaused(true)
   document.addEventListener('visibilitychange', onHide)
   sensors.onShake = () => phase === 'gioco' && say('Piano! Si cammina', 2000, 'warn')
 
@@ -102,7 +115,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
   }
   if ((phase as string) === 'fine') return // uscita durante il caricamento (finish la cambia)
-  say('Punta il fucile davanti a te e premi il grilletto')
+  say(multi ? 'Al via punta il fucile davanti a te' : 'Punta il fucile davanti a te e premi il grilletto')
   raf = requestAnimationFrame(frame)
 
   function alive(t: Target) {
@@ -151,7 +164,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (!t) {
       sparkFx(ax, ay)
       streak = 0
-      return
+      return report()
     }
     t.hitAt = gameT
     const pts = POINTS[t.kind]
@@ -162,7 +175,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       play('oops')
       textFx(ax, ay, String(pts), '#ffab4c')
       say('Il gattino no!', 1200)
-      return
+      return report()
     }
     good++
     streak++
@@ -174,6 +187,11 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     burstFx(ax, ay, [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
     textFx(ax, ay, `+${pts}`, t.kind === 'dorato' ? GOLD : '#ffffff')
+    report()
+  }
+
+  function report() {
+    multi?.report({ score, shots, good, best })
   }
 
   // Il bersaglio sotto il mirino (centro dentro il cerchio allargato della tolleranza), il più centrato.
@@ -203,21 +221,26 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     const portrait = size.h > size.w
     $('portrait').hidden = !portrait
 
+    const clock = multi?.clock()
+    if (clock && clock.paused !== paused) setPaused(clock.paused)
+    if (multi?.ended()) return finish(false)
     if (phase === 'via') {
-      const left = 3 - (now - viaAt) / 1000
+      const left = clock ? -clock.t : 3 - (now - viaAt) / 1000
       const n = Math.ceil(left)
-      if (n !== lastCount && n > 0) {
+      if (n !== lastCount && n > 0 && n <= 3) {
         lastCount = n
         play('beep')
         say(String(n), 0, 'huge')
       }
       if (left <= 0) {
+        if (multi) yaw0 = sensors.yaw
         phase = 'gioco'
         play('go')
         say('Via!', 700, 'huge')
       }
     }
-    if (phase === 'gioco' && !paused && !recenter && !portrait) gameT += dt
+    if (clock) gameT = Math.max(0, clock.t) // tempo comune a tutti i telefoni
+    else if (phase === 'gioco' && !paused && !recenter && !portrait) gameT += dt
     if (phase === 'gioco' && !training && gameT >= opts.duration) return finish(false)
 
     if (training && phase === 'gioco') {
@@ -239,6 +262,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
         play('oops')
         say('Uno zombi ti ha fatto il solletico! -1', 1500, 'warn')
         navigator.vibrate?.([40, 60, 40])
+        report()
       }
     }
 
@@ -381,12 +405,15 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   let hudKey = ''
   function updateHud() {
     const time = training ? 'Allenamento' : fmt(Math.max(0, opts.duration - gameT))
-    const key = `${score}|${streak}|${ammo}|${time}`
+    const live = multi ? multi.board() : []
+    const key = `${score}|${streak}|${ammo}|${time}|${live.map((l) => l.name + l.score).join()}`
     if (key === hudKey) return
     hudKey = key
     $('score').textContent = String(score)
     $('streak').textContent = streak >= 3 ? `serie ${streak}` : ''
     $('time').textContent = time
+    if (multi)
+      $('live').innerHTML = live.slice(0, 4).map((l) => `<li class="${l.me ? 'mine' : ''}">${esc(l.name)} <b>${l.score}</b></li>`).join('')
     $('ammo').innerHTML = useAmmo
       ? `<span class="ammo">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(AMMO - ammo)}</span>`
       : '<span class="ammo-free">Colpi infiniti</span>'
@@ -401,6 +428,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     sensors.onShake = () => {}
     z3?.dispose()
     closeStage()
+    if (multi) {
+      report()
+      return onEnd(null) // la classifica la mostra la lobby, per tutti
+    }
     if (aborted || training) return onEnd(null)
     play('end')
     const name = settings.name || 'Senza nome'

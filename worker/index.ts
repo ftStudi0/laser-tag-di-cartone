@@ -2,7 +2,7 @@
 // Al server arrivano solo eventi di gioco (marker colpito, stato): mai immagini della fotocamera.
 import { DurableObject } from 'cloudflare:workers'
 import {
-  COUNTDOWN_MS, DEFAULT_CONFIG, endAt, MAX_MARKER, participants, resetForRound, REST_MS, shoot, standings,
+  COUNTDOWN_MS, DEFAULT_CONFIG, DURATIONS, endAt, MAX_MARKER, participants, resetForRound, REST_MS, running, shoot, standings,
   type ClientMsg, type Config, type Ev, type Room as RoomState, type ServerMsg,
 } from '../src/rules.ts'
 
@@ -51,7 +51,7 @@ export class Room extends DurableObject<Env> {
       if (this.room) return new Response('occupata', { status: 409 })
       const { code, key } = (await req.json()) as { code: string; key: string }
       this.room = {
-        code, phase: 'lobby', dirId: '', config: { ...DEFAULT_CONFIG }, players: [], startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null,
+        code, phase: 'lobby', dirId: '', config: { ...DEFAULT_CONFIG }, players: [], startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null, seed: 0,
       }
       this.secret = { dirKey: key, keys: {} }
       this.save()
@@ -114,6 +114,14 @@ export class Room extends DurableObject<Env> {
       case 'reload':
         me.ammo = r.config.ammo
         break
+      case 'score':
+        // Sfida a bersagli: ogni telefono conta i suoi colpi sui suoi bersagli (gioco in famiglia, niente anti trucchi)
+        if (r.config.game !== 'sfida' || !running(r, now + 2000)) return
+        me.score = num(m.score)
+        me.shots = num(m.shots)
+        me.hits = Math.min(num(m.good), me.shots)
+        me.best = num(m.best)
+        break
       case 'shot': {
         const res = shoot(r, me, m.marker, now)
         if (!res) return
@@ -126,7 +134,7 @@ export class Room extends DurableObject<Env> {
       }
       case 'config':
         if (!isDir || r.phase !== 'lobby') return
-        r.config = sanitize({ ...r.config, ...m.config })
+        r.config = sanitize({ ...r.config, ...m.config }, r.config)
         participants(r).forEach((p) => resetForRound(p, r.config))
         break
       case 'team':
@@ -140,6 +148,7 @@ export class Room extends DurableObject<Env> {
         r.pausedAt = 0
         r.pausedMs = 0
         r.results = null
+        r.seed = (Math.random() * 2 ** 32) >>> 0
         participants(r).forEach((p) => resetForRound(p, r.config))
         break
       case 'pause':
@@ -176,8 +185,8 @@ export class Room extends DurableObject<Env> {
       const t0 = r.players.filter((p) => p.team === 0).length
       p = {
         id: crypto.randomUUID().slice(0, 8), name, color: m.color, marker: clampMarker(m.marker), team: t0 > r.players.length - t0 ? 1 : 0,
-        ready: { cam: false, sens: false, cal: false, gun: false }, online: true,
-        life: 0, ammo: 0, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0,
+        ready: { cam: false, sens: false, gyro: false, cal: false, gun: false }, online: true,
+        life: 0, ammo: 0, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0,
       }
       resetForRound(p, r.config)
       r.players.push(p)
@@ -262,15 +271,21 @@ export class Room extends DurableObject<Env> {
   }
 }
 
+const num = (n: unknown) => Math.max(0, Math.min(10_000, Math.round(Number(n)) || 0))
 const clampMarker = (n: number) => Math.max(1, Math.min(MAX_MARKER, Math.round(Number(n)) || 1))
 
-function sanitize(c: Config): Config {
+function sanitize(c: Config, prev: Config): Config {
+  const game = c.game === 'sfida' ? 'sfida' : 'laser'
+  const ds = DURATIONS[game]
   return {
+    game,
     mode: c.mode === 'squadre' ? 'squadre' : 'ffa',
-    duration: [120, 180, 300].includes(c.duration) ? c.duration : 180,
+    duration: ds.includes(c.duration) ? c.duration : game === prev.game && ds.includes(prev.duration) ? prev.duration : ds[1],
     life: [3, 5, 7].includes(c.life) ? c.life : 5,
     ammo: [0, 10].includes(c.ammo) ? c.ammo : 10,
     plays: !!c.plays,
+    theme: (['palloncini', 'stelle', 'mostri', 'lattine', 'zombi'] as const).find((t) => t === c.theme) ?? 'palloncini',
+    diff: (['facile', 'media', 'difficile'] as const).find((d) => d === c.diff) ?? 'facile',
   }
 }
 

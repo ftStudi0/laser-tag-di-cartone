@@ -71,7 +71,7 @@ const mk = (id: string, marker: number, team: 0 | 1): Player => {
 }
 const lt: Room = {
   code: 'ABCD', phase: 'gioco', dirId: 'a', config: { ...DEFAULT_CONFIG }, players: [mk('a', 1, 0), mk('b', 2, 1), mk('c', 3, 0)],
-  startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null,
+  startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null, seed: 0,
 }
 const [pa, pb, pc] = lt.players
 let now = 1000

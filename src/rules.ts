@@ -1,8 +1,10 @@
+import type { Diff, Theme } from './targets.ts'
+
 // Regole del laser tag e tipi della stanza, usati sia dal server (Durable Object) sia dai telefoni.
 // Tutti i tempi sono in millisecondi dell'orologio del server.
 
 export type Team = 0 | 1
-export type Ready = { cam: boolean; sens: boolean; cal: boolean; gun: boolean }
+export type Ready = { cam: boolean; sens: boolean; gyro: boolean; cal: boolean; gun: boolean } // gyro: sa quando ti giri (serve ai bersagli)
 export type Player = {
   id: string
   name: string
@@ -21,9 +23,20 @@ export type Player = {
   elims: number
   outs: number
   shots: number
+  best: number // serie migliore, nella Sfida a bersagli
 }
-export type Config = { mode: 'ffa' | 'squadre'; duration: number; life: number; ammo: number; plays: boolean } // ammo 0 = infinite
-export type Standing = { id: string; name: string; color: string; team: Team; score: number; hits: number; elims: number; outs: number; acc: number }
+export type Game = 'laser' | 'sfida'
+export type Config = {
+  game: Game
+  mode: 'ffa' | 'squadre'
+  duration: number
+  life: number
+  ammo: number // 0 = infinite
+  plays: boolean
+  theme: Theme // Sfida a bersagli
+  diff: Diff
+}
+export type Standing = { id: string; name: string; color: string; team: Team; score: number; hits: number; elims: number; outs: number; acc: number; best: number }
 export type Room = {
   code: string
   phase: 'lobby' | 'gioco'
@@ -36,6 +49,7 @@ export type Room = {
   restUntil: number // pausa obbligatoria tra un round e l'altro
   volume: number
   results: Standing[] | null
+  seed: number // sequenza dei bersagli della Sfida, uguale per tutti
 }
 export type Ev = { k: 'hit'; by: string; to: string; out: boolean } | { k: 'fine' }
 
@@ -53,6 +67,7 @@ export type ClientMsg =
   | { t: 'volume'; v: number }
   | { t: 'shot'; marker: number | null }
   | { t: 'reload' }
+  | { t: 'score'; score: number; shots: number; good: number; best: number }
 // Messaggi dal server al telefono.
 export type ServerMsg =
   | { t: 'state'; room: Room; you: string; ev?: Ev }
@@ -69,13 +84,14 @@ export const TEAMS = [
   { name: 'Squadra Arancio', color: '#ff9f1c' },
   { name: 'Squadra Blu', color: '#3d8bfd' },
 ]
-export const DEFAULT_CONFIG: Config = { mode: 'ffa', duration: 180, life: 5, ammo: 10, plays: true }
+export const DEFAULT_CONFIG: Config = { game: 'laser', mode: 'ffa', duration: 180, life: 5, ammo: 10, plays: true, theme: 'palloncini', diff: 'facile' }
+export const DURATIONS: Record<Game, number[]> = { laser: [120, 180, 300], sfida: [60, 90, 120] }
 
 export const endAt = (r: Room) => r.startAt + r.config.duration * 1000 + r.pausedMs
 // Tempo che resta, fermo durante la pausa.
 export const remaining = (r: Room, now: number) => Math.max(0, Math.min(r.config.duration * 1000, endAt(r) - Math.max(r.startAt, r.pausedAt || now)))
 export const participants = (r: Room) => r.players.filter((p) => r.config.plays || p.id !== r.dirId)
-export const isReady = (p: Player) => p.ready.cam && p.ready.sens && p.ready.cal && p.ready.gun
+export const isReady = (p: Player, c: Config) => p.ready.cam && (c.game === 'sfida' ? p.ready.gyro : p.ready.sens) && p.ready.cal && p.ready.gun
 export const markerTaken = (r: Room, p: Player) => participants(r).some((o) => o !== p && o.marker === p.marker)
 export const running = (r: Room, now: number) => r.phase === 'gioco' && !r.pausedAt && now >= r.startAt && now < endAt(r)
 
@@ -90,12 +106,13 @@ export function settle(p: Player, cfg: Config, now: number) {
 }
 
 export function resetForRound(p: Player, cfg: Config) {
-  Object.assign(p, { life: cfg.life, ammo: cfg.ammo, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0 })
+  Object.assign(p, { life: cfg.life, ammo: cfg.ammo, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0 })
 }
 
 // Applica uno sparo. Restituisce null se lo sparo non vale (fuori gioco, cadenza, munizioni).
 export function shoot(r: Room, shooter: Player, marker: number | null, now: number): { hit: Player | null; out: boolean } | null {
   const c = r.config
+  if (c.game !== 'laser') return null
   settle(shooter, c, now)
   if (!running(r, now) || status(shooter, now) !== 'in gioco') return null
   if (now - shooter.lastShot < RATE_MS - 60) return null // un po' di margine per il ritardo della rete
@@ -125,7 +142,7 @@ export function shoot(r: Room, shooter: Player, marker: number | null, now: numb
 
 export function standings(r: Room): Standing[] {
   return participants(r)
-    .map((p) => ({ id: p.id, name: p.name, color: p.color, team: p.team, score: p.score, hits: p.hits, elims: p.elims, outs: p.outs, acc: p.shots ? p.hits / p.shots : 0 }))
+    .map((p) => ({ id: p.id, name: p.name, color: p.color, team: p.team, score: p.score, hits: p.hits, elims: p.elims, outs: p.outs, acc: p.shots ? p.hits / p.shots : 0, best: p.best }))
     .sort((a, b) => b.score - a.score || b.acc - a.acc)
 }
 
