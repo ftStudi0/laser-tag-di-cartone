@@ -6,13 +6,13 @@ import { recordKey, saveRecord, settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, videoSize, view,
 } from './stage.ts'
-import { azAt, BOOTH, boothSchedule, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
+import { ARCADE, azAt, BOOTH, boothSchedule, CLAY, clayEl, claySchedule, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
 import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
 import { heat, onTrigger } from './trigger.ts'
 import { esc } from './ui.ts'
 
-export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean; booth?: boolean } // duration 0 = allenamento; heat: il fucile si scalda; booth: chiosco del luna park
+export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean; booth?: boolean; clay?: boolean; arcade?: boolean } // duration 0 = allenamento; heat: il fucile si scalda; booth: chiosco del luna park; clay: tiro al piattello
 export type Result = GameOpts & { score: number; shots: number; good: number; best: number; rank: number }
 // Sfida a bersagli: stesso gioco, ma seme, tempo e pausa arrivano dal server e i punti vanno a lui.
 export type Multi = {
@@ -24,6 +24,7 @@ export type Multi = {
   report: (s: { score: number; shots: number; good: number; best: number }) => void
   board: () => { name: string; score: number; me: boolean }[]
   color?: string // a squadre: il colore della squadra
+  resume?: { score: number; shots: number; good: number; best: number } // chi rientra a metà riparte dai suoi punti
   // Bersagli condivisi: tutti li vedono nella stessa direzione e il primo che colpisce li prende
   shared?: {
     ref: string // cosa puntare per la direzione zero comune, per esempio "la TV"
@@ -44,13 +45,17 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
 export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void, multi?: Multi) {
   const booth = !!opts.booth
   if (booth) opts = { ...opts, duration: BOOTH.duration, heat: false, theme: opts.theme === 'zombi' ? 'palloncini' : opts.theme }
+  const clay = !!opts.clay
+  if (clay) opts = { ...opts, duration: CLAY.duration, heat: false }
+  const arcade = !!opts.arcade && !multi
+  if (arcade) opts = { ...opts, duration: ARCADE.duration, heat: false }
   const training = opts.duration === 0 && !multi
   const shared = multi?.shared
   const sizeMul = (mode() === 'bussola' ? 1.5 : 1) * (shared?.size ?? 1) // la bussola trema: bersagli più grandi
   const gun = heat(opts.heat && !training ? AMMO : 0)
   const zombi = opts.theme === 'zombi'
   const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
-  const targets: Target[] = training ? [] : booth ? boothSchedule(seed, opts.diff, sizeMul) : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
+  const targets: Target[] = training ? [] : booth ? boothSchedule(seed, opts.diff, sizeMul, opts.duration) : clay ? claySchedule(seed, opts.diff, sizeMul, opts.duration) : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
   const color = multi?.color ?? settings.color
   const H = settings.gunH // altezza degli occhi sul pavimento virtuale
   let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
@@ -66,7 +71,9 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   let lastNow = performance.now()
   let lastShot = -1e9
   let yaw0 = 0
-  let score = 0, shots = 0, good = 0, streak = 0, best = 0
+  let { score, shots, good, best } = multi?.resume ?? { score: 0, shots: 0, good: 0, best: 0 }
+  let streak = 0
+  let lives = ARCADE.shots // Arcade: i colpi che si possono ancora sbagliare
   let raf = 0
   let fps = 0
 
@@ -78,7 +85,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       <button class="hud-btn" data-a="esci" aria-label="Esci">${icon('close')}</button>
     </div>
     <div class="hud-ml pill"><b data-score>0</b><small>punti</small><small data-streak></small>${multi ? '<ol class="live" data-live></ol>' : ''}</div>
-    <div class="hud-mr pill"><b data-time>${training ? 'Allenamento' : fmt(opts.duration)}</b></div>
+    <div class="hud-mr pill"><b data-time>${training ? 'Allenamento' : arcade ? '0:00' : fmt(opts.duration)}</b></div>
     <div class="hud-msg" hidden></div>
     <div class="hud-full" data-pause hidden>Pausa<small>${multi && !multi.isDir ? 'Aspetta il regista' : `Tocca ${icon('play', 18)} in alto a destra per riprendere`}</small></div>
     <div class="hud-full" data-portrait hidden>Gira il telefono in orizzontale</div>
@@ -138,7 +145,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
 
   // Direzione e distanza del punto da colpire. Gli zombi camminano sul pavimento, H metri sotto gli occhi.
   function geo(t: Target): { dir: Vec3; dist: number } {
-    if (t.d0 === undefined) return { dir: dirFrom(yaw0 + azAt(t, gameT), t.el), dist: t.dist }
+    if (t.d0 === undefined) return { dir: dirFrom(yaw0 + azAt(t, gameT), t.vel === undefined ? t.el : clayEl(t, gameT)), dist: t.dist }
     const d = zDist(t, gameT)
     const h = dirFrom(yaw0 + t.az, 0)
     const y = ZOMBIE.hitY - H
@@ -166,10 +173,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
     if (phase !== 'gioco' || paused || size.h > size.w) return
     if (now - lastShot < 300) return // cadenza massima
-    if (booth && shots >= BOOTH.shots) return play('click')
+    if ((booth && !arcade && shots >= BOOTH.shots) || (arcade && lives <= 0)) return play('click')
     if (!gun.take(now)) return play('click') // scotta ancora
     lastShot = now
-    if (booth && shots + 1 === BOOTH.shots) setTimeout(() => phase === 'gioco' && finish(false), 1200) // ultimo colpo: si vede com'è andata
+    if (booth && !arcade && shots + 1 === BOOTH.shots) setTimeout(() => phase === 'gioco' && finish(false), 1200) // ultimo colpo: si vede com'è andata
     shots++
     play('pew')
     beamFx(color)
@@ -178,6 +185,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (!t) {
       sparkFx(ax, ay)
       streak = 0
+      miss()
       return report()
     }
     t.hitAt = gameT
@@ -190,19 +198,28 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       play('oops')
       textFx(ax, ay, String(pts), '#ffab4c')
       say('Il gattino no!', 1200)
+      miss()
       return report()
     }
     good++
     streak++
     best = Math.max(best, streak)
     score += pts
-    play('pop_' + opts.theme)
+    play(clay ? 'crack' : 'pop_' + opts.theme)
     if (zombi) say(['Preso!', 'Che solletico!', 'Puff!'][good % 3], 600)
     play('hit')
-    burstFx(ax, ay, [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
+    burstFx(ax, ay, clay ? [t.kind === 'dorato' ? GOLD : '#ff8a3d', '#c4561d', '#ffffff', color] : [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
     textFx(ax, ay, `+${pts}`, t.kind === 'dorato' ? GOLD : '#ffffff')
     report()
+  }
+
+  // Arcade: uno sbaglio costa un colpo; finiti i colpi, finisce la partita
+  function miss() {
+    if (!arcade) return
+    lives--
+    if (lives === 3) say('Attenzione: ti restano 3 colpi', 1400, 'warn')
+    if (lives <= 0) setTimeout(() => phase === 'gioco' && finish(false), 1200)
   }
 
   function report() {
@@ -298,12 +315,20 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
         streak = 0
         play('oops')
         say('Uno zombi ti ha fatto il solletico! -1', 1500, 'warn')
+        miss()
         navigator.vibrate?.([40, 60, 40])
         report()
       }
     }
 
     if (phase === 'gioco') gun.tick(now)
+    // il "tunk" della macchina che lancia i piattelli
+    if (clay && phase === 'gioco')
+      for (const tg of targets)
+        if (!tg.launched && tg.born <= gameT) {
+          tg.launched = true
+          play('launch')
+        }
 
     draw(now)
     updateHud()
@@ -345,10 +370,11 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
         }
         if (!onScreen) continue
         const popIn = Math.min(1, (gameT - tg.born) / 0.2)
-        const fly = Math.max(0, (gameT - end) / FLY)
+        const fly = clay ? (gameT >= end ? 1 : 0) : Math.max(0, (gameT - end) / FLY)
         ctx.save()
         ctx.globalAlpha = 1 - fly
-        drawTarget(ctx, opts.theme, tg.kind, tg.tint, p.x, p.y - fly * r * 2, r * (0.6 + 0.4 * popIn), t)
+        if (clay) drawClay(ctx, p.x, p.y, r, gameT - tg.born, tg.kind)
+        else drawTarget(ctx, opts.theme, tg.kind, tg.tint, p.x, p.y - fly * r * 2, r * (0.6 + 0.4 * popIn), t)
         ctx.restore()
       }
       if (zombi) drawZombies(zs, v, t)
@@ -453,10 +479,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
 
   let hudKey = ''
   function updateHud() {
-    const time = training ? 'Allenamento' : fmt(Math.max(0, opts.duration - gameT))
+    const time = training ? 'Allenamento' : arcade ? fmt(gameT) : fmt(Math.max(0, opts.duration - gameT))
     const live = multi ? multi.board() : []
     const ammo = gun.shown(performance.now())
-    const key = `${score}|${streak}|${ammo}|${shots}|${gun.hot()}|${time}|${live.map((l) => l.name + l.score).join()}`
+    const key = `${score}|${streak}|${ammo}|${shots}|${lives}|${gun.hot()}|${time}|${live.map((l) => l.name + l.score).join()}`
     if (key === hudKey) return
     hudKey = key
     $('score').textContent = String(score)
@@ -464,7 +490,9 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     $('time').textContent = time
     if (multi)
       $('live').innerHTML = live.slice(0, 4).map((l) => `<li class="${l.me ? 'mine' : ''}">${esc(l.name)} <b>${l.score}</b></li>`).join('')
-    $('ammo').innerHTML = booth
+    $('ammo').innerHTML = arcade
+      ? `<span class="ammo-free">Colpi <b>${lives}</b></span>`
+      : booth
       ? `<span class="ammo-free">Colpi <b>${BOOTH.shots - shots}</b></span>`
       : opts.heat && !training
       ? `<span class="ammo ${gun.hot() ? 'hot' : ''}">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(AMMO - ammo)}</span>`
@@ -487,9 +515,33 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (aborted || training) return onEnd(null)
     play('end')
     const name = settings.name || 'Senza nome'
-    const rank = saveRecord(recordKey(opts.diff, opts.duration, booth ? 'chiosco' : zombi ? 'zombi' : 'tiro'), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
+    const rank = saveRecord(recordKey(opts.diff, arcade ? 0 : opts.duration, booth ? 'chiosco' : clay ? 'piattello' : zombi ? 'zombi' : 'tiro'), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
     onEnd({ ...opts, score, shots, good, best, rank })
   }
+}
+
+// Il piattello: un disco arancione visto un po' di sbieco, che gira mentre vola.
+function drawClay(c: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, kind: string) {
+  const col = kind === 'dorato' ? GOLD : '#ff8a3d'
+  const tilt = 0.45 + 0.15 * Math.sin(t * 9)
+  c.save()
+  c.translate(x, y)
+  c.lineWidth = Math.max(1.5, r * 0.12)
+  c.strokeStyle = 'rgba(40,30,60,0.6)'
+  c.fillStyle = '#c4561d'
+  c.beginPath()
+  c.ellipse(0, r * 0.12, r, r * tilt, 0, 0, Math.PI * 2)
+  c.fill()
+  c.fillStyle = col
+  c.beginPath()
+  c.ellipse(0, 0, r, r * tilt, 0, 0, Math.PI * 2)
+  c.fill()
+  c.stroke()
+  c.fillStyle = 'rgba(255,255,255,0.45)'
+  c.beginPath()
+  c.ellipse(0, 0, r * 0.45, r * tilt * 0.45, 0, 0, Math.PI * 2)
+  c.fill()
+  c.restore()
 }
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]

@@ -160,6 +160,7 @@ function playChallenge(net: Net, done: () => void) {
       return [0, 1].map((t) => ({ name: TEAMS[t].name.replace('Squadra ', ''), score: tot[t], me: t === mine })).sort((a, b) => b.score - a.score)
     },
     color: c.mode === 'squadre' ? TEAMS[r.players.find((p) => p.id === net.me)?.team ?? 0].color : undefined,
+    resume: ((p) => p && { score: p.score, shots: p.shots, good: p.hits, best: p.best })(r.players.find((p) => p.id === net.me)),
     shared: c.game !== 'condivisi' ? undefined : {
       ref: c.ref,
       size: SHARED_SIZE,

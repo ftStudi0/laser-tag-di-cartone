@@ -20,6 +20,9 @@ export type Target = {
   d0?: number
   v?: number
   caught?: boolean
+  // piattelli: salgono con velocità vel (rad/s) e ricadono
+  vel?: number
+  launched?: boolean
 }
 
 // r: raggio del bersaglio, life: secondi prima che voli via, every: secondi tra un bersaglio e l'altro,
@@ -111,22 +114,53 @@ export function zombieSchedule(seed: number, diff: Diff, duration: number, sizeM
 
 // Chiosco del luna park: tre file di bersagli che scorrono davanti, a destra e a sinistra, sempre più veloci.
 export const BOOTH = { half: 24 * D, rows: [-8 * D, 0, 8 * D], dist: 4, shots: 20, duration: 60 } // sta quasi tutto nello schermo
+// Arcade: si perde un colpo solo quando si sbaglia, e si gioca finché ne restano.
+export const ARCADE = { shots: 10, duration: 600 }
 const BDIFF = { facile: { speed: 0.16, every: 0.9, r: 0.2 }, media: { speed: 0.24, every: 0.7, r: 0.16 }, difficile: { speed: 0.34, every: 0.55, r: 0.13 } }
 
-export function boothSchedule(seed: number, diff: Diff, sizeMul = 1): Target[] {
+export function boothSchedule(seed: number, diff: Diff, sizeMul = 1, duration = BOOTH.duration): Target[] {
   const d = BDIFF[diff]
   const rnd = mulberry32(seed)
   const out: Target[] = []
-  for (let t = 1, id = 0; t < BOOTH.duration; t += d.every * (0.7 + rnd() * 0.6), id++) {
+  for (let t = 1, id = 0; t < duration; t += d.every * (0.7 + rnd() * 0.6), id++) {
     const row = Math.floor(rnd() * 3)
     const dir = row % 2 ? -1 : 1 // le file vanno in versi alterni
     const roll = rnd()
     const kind: Kind = roll < 0.07 ? 'dorato' : roll < 0.17 ? 'amico' : roll < 0.37 ? 'veloce' : 'normale'
-    const speed = d.speed * (1 + (t / BOOTH.duration) * 0.6) * (kind === 'veloce' ? 1.6 : 1)
+    const speed = d.speed * Math.min(2.2, 1 + (t / BOOTH.duration) * 0.6) * (kind === 'veloce' ? 1.6 : 1)
     out.push({
       id, kind, az: -dir * BOOTH.half, el: BOOTH.rows[row], born: t, life: (2 * BOOTH.half) / speed,
       r: d.r * sizeMul * (kind === 'dorato' ? 0.8 : 1), dist: BOOTH.dist, vaz: dir * speed, tint: Math.floor(rnd() * 4),
     })
+  }
+  return out
+}
+
+// Tiro al piattello: i piattelli partono da un lato, volano ad arco davanti a te e ricadono dall'altra parte.
+export const CLAY = { g: 0.5, el0: -6 * D, dist: 7, duration: 60 } // g in rad/s², il piattello parte 6 gradi sotto l'orizzonte
+const CDIFF = { facile: { speed: 0.32, every: 2.6, r: 0.26, double: 0 }, media: { speed: 0.42, every: 2.2, r: 0.21, double: 0.3 }, difficile: { speed: 0.52, every: 1.8, r: 0.17, double: 0.5 } }
+export const clayEl = (t: Target, now: number) => {
+  const dt = now - t.born
+  return t.el + t.vel! * dt - (CLAY.g * dt * dt) / 2
+}
+
+export function claySchedule(seed: number, diff: Diff, sizeMul = 1, duration = CLAY.duration): Target[] {
+  const d = CDIFF[diff]
+  const rnd = mulberry32(seed)
+  const out: Target[] = []
+  for (let t = 1.5, id = 0; t < duration - 3; t += d.every * (0.8 + rnd() * 0.4)) {
+    const n = rnd() < d.double ? 2 : 1 // la doppietta: due piattelli quasi insieme
+    for (let k = 0; k < n; k++, id++) {
+      const side = rnd() < 0.5 ? -1 : 1
+      const roll = rnd()
+      const kind: Kind = roll < 0.08 ? 'dorato' : roll < 0.3 ? 'veloce' : 'normale'
+      const vel = 0.5 + rnd() * 0.25
+      out.push({
+        id, kind, az: side * (24 + rnd() * 10) * D, el: CLAY.el0, born: t + k * 0.4, life: (2 * vel) / CLAY.g,
+        r: d.r * sizeMul * (kind === 'dorato' ? 0.85 : 1), dist: CLAY.dist,
+        vaz: -side * d.speed * (kind === 'veloce' ? 1.4 : 1) * (0.85 + rnd() * 0.3), tint: 0, vel,
+      })
+    }
   }
   return out
 }

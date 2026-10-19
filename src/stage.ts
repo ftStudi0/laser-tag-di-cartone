@@ -24,6 +24,18 @@ function resize() {
 }
 addEventListener('resize', resize)
 
+// iPhone: due tocchi veloci fanno scorrere o ingrandire la pagina e sotto resta una fascia nera.
+// Si blocca il gesto (non i pulsanti) e, se la pagina si è spostata lo stesso, si rimette a posto.
+el.addEventListener('touchend', (e) => {
+  if (!(e.target as Element).closest('button, input, select, label, a')) e.preventDefault()
+}, { passive: false })
+el.addEventListener('dblclick', (e) => e.preventDefault())
+const unshift = () => {
+  if (!el.hidden && (scrollY || visualViewport?.offsetTop)) scrollTo(0, 0)
+}
+visualViewport?.addEventListener('scroll', unshift)
+addEventListener('scroll', unshift)
+
 async function startCamera() {
   if (stream?.getVideoTracks()[0]?.readyState === 'live') return
   // le immagini restano qui: il video va solo sullo schermo, non viene mai inviato o salvato
