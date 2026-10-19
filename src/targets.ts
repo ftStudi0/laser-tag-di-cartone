@@ -25,9 +25,9 @@ export type Target = {
 // r: raggio del bersaglio, life: secondi prima che voli via, every: secondi tra un bersaglio e l'altro,
 // speed: velocità dei veloci, spread: gradi totali intorno al giocatore a fine partita.
 export const DIFF = {
-  facile: { r: 0.4, life: 6, every: 2, speed: 0.1, spread: 200, ammo: false },
-  media: { r: 0.3, life: 4.5, every: 1.5, speed: 0.18, spread: 300, ammo: true },
-  difficile: { r: 0.22, life: 3.4, every: 1, speed: 0.28, spread: 360, ammo: true },
+  facile: { r: 0.4, life: 6, every: 2, speed: 0.1, spread: 200 },
+  media: { r: 0.3, life: 4.5, every: 1.5, speed: 0.18, spread: 300 },
+  difficile: { r: 0.22, life: 3.4, every: 1, speed: 0.28, spread: 360 },
 }
 
 export const POINTS: Record<Kind, number> = { normale: 1, veloce: 2, dorato: 5, amico: -2 }

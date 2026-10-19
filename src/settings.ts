@@ -27,6 +27,7 @@ const DEFAULTS = {
   gunH: 1.2, // altezza del fucile da terra in metri, per il pavimento virtuale degli zombi
   z3d: false, // zombi disegnati in 3D
   marker: 1, // numero del proprio marker stampato
+  heat: false, // il fucile si scalda dopo 10 colpi
 }
 export type Settings = typeof DEFAULTS
 

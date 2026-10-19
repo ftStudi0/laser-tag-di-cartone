@@ -139,7 +139,7 @@ function enter(code: string) {
 function playChallenge(net: Net, done: () => void) {
   const r = net.room!
   const c = r.config
-  playSolo({ theme: c.theme, diff: c.diff, duration: c.duration }, done, {
+  playSolo({ theme: c.theme, diff: c.diff, duration: c.duration, heat: c.ammo > 0 }, done, {
     seed: r.seed,
     clock: () => {
       const room = net.room!
@@ -174,7 +174,7 @@ function playChallenge(net: Net, done: () => void) {
 }
 
 function rulesHtml(c: Config) {
-  const ammo = c.diff !== 'facile'
+  const gun = c.ammo ? `Dopo ${c.ammo} colpi il fucile si scalda: aspetta 2 secondi che si raffreddi.` : 'Colpi infiniti in questa partita.'
   if (c.game === 'condivisi') return rulesBox([
     ['users', 'Prima del via', `Mettetevi vicini, puntate tutti ${c.ref} e premete il grilletto. Così i bersagli sono nello stesso posto per tutti.`],
     ['target', 'Si spara', 'Gli stessi bersagli per tutti: chi lo colpisce prima lo prende, e il bersaglio sparisce anche per gli altri.'],
@@ -183,13 +183,13 @@ function rulesHtml(c: Config) {
   ])
   if (c.game === 'sfida') return rulesBox([
     ['target', 'Si spara', 'I bersagli compaiono intorno a te: girati, mira e tocca il grilletto. Tutti hanno gli stessi bersagli.'],
-    ['up', 'Si ricarica', ammo ? 'Hai 10 colpi. Per ricaricare alza il fucile verso il soffitto o tieni premuto il grilletto 5 secondi.' : 'In Facile i colpi sono infiniti.'],
+    ['zap', 'Colpi', gun],
     ['heart', 'Attenzione', c.theme === 'zombi' ? 'Se uno zombi ti arriva vicino ti fa il solletico: un punto in meno.' : 'Non colpire il gattino col cuore: toglie 2 punti.'],
     ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra che fa più punti: si sommano i punti di tutti.' : 'Vince chi ha più punti alla fine. La classifica si vede durante la sfida.'],
   ])
   return rulesBox([
-    ['zap', 'Si spara', 'Metti il mirino sul foglio di un avversario e tocca il grilletto.'],
-    ['up', 'Si ricarica', c.ammo ? `Hai ${c.ammo} colpi. Per ricaricare alza il fucile verso il soffitto o tieni premuto il grilletto 5 secondi.` : 'Colpi infiniti in questa partita.'],
+    ['target', 'Si spara', 'Metti il mirino sul foglio di un avversario e tocca il grilletto.'],
+    ['zap', 'Colpi', gun],
     ['heart', 'Fuori gioco', `Hai ${c.life} cuori. Quando finiscono stai fuori 8 secondi, poi rientri con lo scudo.`],
     ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra con più punti. Non si colpiscono i compagni.' : '1 punto per ogni colpo, 3 in più quando mandi qualcuno fuori gioco.'],
   ])
@@ -236,12 +236,12 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
           <h3>Come si gioca</h3>${seg('mode', [['ffa', MODES.ffa], ['squadre', MODES.squadre]])}
           ${c.game === 'laser' ? `
           <h3>Durata</h3>${seg('duration', [[120, '2 min'], [180, '3 min'], [300, '5 min']])}
-          <div class="two"><div><h3>Cuori</h3>${seg('life', [[3, '3'], [5, '5'], [7, '7']])}</div>
-          <div><h3>Colpi</h3>${seg('ammo', [[10, '10, poi ricarica'], [0, 'Infiniti']])}</div></div>` : `
+          <h3>Cuori</h3>${seg('life', [[3, '3'], [5, '5'], [7, '7']])}` : `
           <h3>Tema</h3>${seg('theme', (Object.keys(THEMES) as Theme[]).map((t) => [t, THEMES[t]]))}
           <div class="two"><div><h3>Difficoltà</h3>${seg('diff', Object.entries(DIFFS))}</div>
           <div><h3>Durata</h3>${seg('duration', [[60, '1 min'], [90, '1½ min'], [120, '2 min']])}</div></div>
           ${c.game === 'condivisi' ? `<h3>Cosa puntate tutti all'inizio</h3>${seg('ref', REFS.map((x) => [x, x[0].toUpperCase() + x.slice(1)]))}` : ''}`}
+          <h3>Colpi</h3>${seg('ammo', [[0, 'Infiniti'], [10, 'Il fucile si scalda']])}
           <h3>Il regista</h3>${seg('plays', [[true, 'Gioco anche io'], [false, 'Faccio solo il regista']])}
           <label class="field">Volume per tutti <input type="range" min="0" max="1" step="0.1" value="${r.volume}" data-vol></label>`
         : rulesHtml(c)}

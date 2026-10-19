@@ -632,6 +632,13 @@ input[type='checkbox'] {
 .ammo i.off {
   background: #d8d2e0;
 }
+/* fucile caldo: le barrette si riaccendono arancioni mentre si raffredda */
+.ammo.hot i {
+  background: #ff9f1c;
+}
+.ammo.hot i.off {
+  background: #d8d2e0;
+}
 .ammo-free {
   font-size: 14px;
 }

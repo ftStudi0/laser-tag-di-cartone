@@ -117,9 +117,6 @@ export class Room extends DurableObject<Env> {
         if (r.phase !== 'lobby' || freeColor(r, me, m.color) !== m.color) return // già preso da un altro
         me.color = m.color
         break
-      case 'reload':
-        me.ammo = r.config.ammo
-        break
       case 'score':
         // Sfida a bersagli: ogni telefono conta i suoi colpi sui suoi bersagli (gioco in famiglia, niente anti trucchi)
         if (r.config.game === 'laser' || !running(r, now + 2000)) return
@@ -206,7 +203,7 @@ export class Room extends DurableObject<Env> {
       p = {
         id: crypto.randomUUID().slice(0, 8), name, color: freeColor(r, null, m.color), marker: clampMarker(m.marker), team: t0 > r.players.length - t0 ? 1 : 0,
         ready: { cam: false, sens: false, gyro: false, cal: false, gun: false }, online: true,
-        life: 0, ammo: 0, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0,
+        life: 0, ammo: 0, hotUntil: 0, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0,
       }
       resetForRound(p, r.config)
       r.players.push(p)

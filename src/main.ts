@@ -96,7 +96,9 @@ function soloSetup() {
     <div class="two"><div>
     <h3>Difficoltà</h3>
     <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((d) => `<button class="${d === settings.diff ? 'on' : ''}" data-diff="${d}">${DIFFS[d]}</button>`).join('')}</div>
-    <p class="note">In Facile i colpi sono infiniti. In Media e Difficile ne hai 10: per ricaricare alza il fucile verso il soffitto o tieni premuto il grilletto 5 secondi.</p>
+    <h3>Colpi</h3>
+    <div class="seg"><button class="${settings.heat ? '' : 'on'}" data-heat="0">Infiniti</button><button class="${settings.heat ? 'on' : ''}" data-heat="1">Il fucile si scalda</button></div>
+    <p class="note">Se il fucile si scalda, dopo 10 colpi si ferma 2 secondi per raffreddarsi.</p>
     </div><div>
     <h3>Durata</h3>
     <div class="seg">${DURATIONS.map(([s, l]) => `<button class="${s === settings.duration ? 'on' : ''}" data-dur="${s}">${l}</button>`).join('')}</div>
@@ -114,7 +116,7 @@ function soloSetup() {
     drawTarget(c, b.dataset.theme as Theme, 'normale', 1, 40, 38, 24, 0)
     drawTarget(c, b.dataset.theme as Theme, 'dorato', 0, 86, 40, 16, 0.5)
   })
-  const pick = (sel: string, key: 'theme' | 'diff' | 'duration' | 'z3d', parse: (v: string) => any) =>
+  const pick = (sel: string, key: 'theme' | 'diff' | 'duration' | 'z3d' | 'heat', parse: (v: string) => any) =>
     on(sel, (el) => {
       ;(settings as any)[key] = parse(el.dataset[sel.slice(6, -1)]!)
       saveSettings()
@@ -134,6 +136,7 @@ function soloSetup() {
   on('[data-theme]', legend)
   pick('[data-theme]', 'theme', String)
   pick('[data-z3d]', 'z3d', (v) => v === '1')
+  pick('[data-heat]', 'heat', (v) => v === '1')
   pick('[data-diff]', 'diff', String)
   pick('[data-dur]', 'duration', Number)
   on('[data-back]', home)
@@ -144,7 +147,7 @@ function soloSetup() {
     if (m === 'nessuno')
       return alert('Questo telefono non ha il giroscopio, quindi non sa quando ti giri. I bersagli intorno non funzionano: arriverà la modalità Bersagli sui muri.')
     app.hidden = true
-    playSolo({ theme: settings.theme, diff: settings.diff, duration: settings.duration }, (r) => {
+    playSolo({ theme: settings.theme, diff: settings.diff, duration: settings.duration, heat: settings.heat }, (r) => {
       app.hidden = false
       if (r) results(r)
       else soloSetup()

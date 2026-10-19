@@ -10,7 +10,7 @@ import { settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, video,
 } from './stage.ts'
-import { onTrigger, RELOAD_PITCH, reloader } from './trigger.ts'
+import { heat, onTrigger } from './trigger.ts'
 
 
 // Il colore di chi spara: quello della squadra, oppure il suo. Mai rosso per chi viene colpito: giallo brillante.
@@ -22,7 +22,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
   const me = () => room.players.find((p) => p.id === net.me)
   const isDir = () => room.dirId === net.me
   const color = () => shooterColor(room, me())
-  let ammo = room.config.ammo
+  const gun = heat(room.config.ammo)
   let lastShot = -1e9
   let lastCount = 0
   let wasOut = false
@@ -60,13 +60,6 @@ export async function playLaser(net: Net, onEnd: () => void) {
     if (a === 'fine' && confirm('Terminare la partita per tutti?')) net.send({ t: 'stop' })
   }
 
-  const reload = reloader(
-    () => ammo >= room.config.ammo,
-    () => {
-      ammo = room.config.ammo
-      net.send({ t: 'reload' })
-    },
-  )
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
   sensors.onShake = () => say('Piano! Si cammina', 2000, 'warn')
   const prevState = net.onState
@@ -135,14 +128,8 @@ export async function playLaser(net: Net, onEnd: () => void) {
     if (done || !det || !self || size.h > size.w) return
     if (room.pausedAt || sNow < room.startAt || sNow >= endAt(room) || status(self, sNow) !== 'in gioco') return
     if (now - lastShot < RATE_MS) return
-    if (sensors.pitch > RELOAD_PITCH) return // durante la ricarica non si spara
-    if (room.config.ammo && ammo <= 0) {
-      play('click')
-      say('Ricarica! Alza il fucile o tieni premuto', 1500, 'warn')
-      return
-    }
+    if (!gun.take(now)) return play('click') // scotta ancora
     lastShot = now
-    if (room.config.ammo) ammo--
     // effetto subito, nello stesso frame del tocco; l'esito arriva appena il riconoscimento risponde
     const rate = room.config.mode === 'squadre' ? [1.15, 0.87][self.team] : 1
     play('pew', 1, rate)
@@ -216,7 +203,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
         $('outh').innerHTML = Array.from({ length: room.config.life }, (_, i) => `<i class="${i < lit ? '' : 'off'}">${icon('heart', 34)}</i>`).join('')
       }
       $('outt').textContent = `Di nuovo in gioco tra ${Math.ceil((self!.outUntil - sNow) / 1000)}`
-      ammo = room.config.ammo
+      gun.reset()
     }
     if (wasOut && st !== 'fuori') {
       play('rientro')
@@ -225,7 +212,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     wasOut = st === 'fuori'
     $('shield').hidden = st !== 'protetto'
 
-    if (room.config.ammo && st === 'in gioco') reload(now)
+    gun.tick(now)
 
     det!.tick(now)
     const ms = now - det!.state.at < 300 ? det!.state.markers : []
@@ -322,12 +309,13 @@ export async function playLaser(net: Net, onEnd: () => void) {
     const c = room.config
     const life = self.life <= 0 && sNow >= self.outUntil ? c.life : self.life
     const time = fmt(remaining(room, sNow) / 1000)
-    const key = `${life}|${ammo}|${self.score}|${time}|${net.online}`
+    const ammo = gun.shown(performance.now())
+    const key = `${life}|${ammo}|${gun.hot()}|${self.score}|${time}|${net.online}`
     if (key === hudKey) return
     hudKey = key
     $('life').innerHTML = Array.from({ length: c.life }, (_, i) => `<i class="${i < life ? '' : 'off'}">${icon('heart', 20)}</i>`).join('')
     $('ammo').innerHTML = c.ammo
-      ? `<span class="ammo">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(c.ammo - ammo)}</span>`
+      ? `<span class="ammo ${gun.hot() ? 'hot' : ''}">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(c.ammo - ammo)}</span>`
       : '<span class="ammo-free">Colpi infiniti</span>'
     $('score').textContent = String(self.score)
     $('team').textContent = c.mode === 'squadre' ? TEAMS[self.team].name : ''

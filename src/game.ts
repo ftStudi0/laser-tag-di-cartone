@@ -6,13 +6,13 @@ import { recordKey, saveRecord, settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, videoSize, view,
 } from './stage.ts'
-import { azAt, DIFF, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
+import { azAt, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
 import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
-import { onTrigger, RELOAD_PITCH, reloader } from './trigger.ts'
+import { heat, onTrigger } from './trigger.ts'
 import { esc } from './ui.ts'
 
-export type GameOpts = { theme: Theme; diff: Diff; duration: number } // duration 0 = allenamento
+export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean } // duration 0 = allenamento; heat: il fucile si scalda
 export type Result = GameOpts & { score: number; shots: number; good: number; best: number; rank: number }
 // Sfida a bersagli: stesso gioco, ma seme, tempo e pausa arrivano dal server e i punti vanno a lui.
 export type Multi = {
@@ -45,7 +45,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   const training = opts.duration === 0 && !multi
   const shared = multi?.shared
   const sizeMul = (mode() === 'bussola' ? 1.5 : 1) * (shared?.size ?? 1) // la bussola trema: bersagli più grandi
-  const useAmmo = DIFF[opts.diff].ammo && !training
+  const gun = heat(opts.heat && !training ? AMMO : 0)
   const zombi = opts.theme === 'zombi'
   const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
   const targets: Target[] = training ? [] : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
@@ -64,7 +64,6 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   let lastNow = performance.now()
   let lastShot = -1e9
   let yaw0 = 0
-  let ammo = AMMO
   let score = 0, shots = 0, good = 0, streak = 0, best = 0
   let raf = 0
   let fps = 0
@@ -109,7 +108,6 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   document.addEventListener('visibilitychange', onHide)
   sensors.onShake = () => phase === 'gioco' && say('Piano! Si cammina', 2000, 'warn')
 
-  const reload = reloader(() => ammo >= AMMO, () => (ammo = AMMO))
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
 
   try {
@@ -166,14 +164,8 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
     if (phase !== 'gioco' || paused || size.h > size.w) return
     if (now - lastShot < 300) return // cadenza massima
-    if (sensors.pitch > RELOAD_PITCH) return // durante la ricarica non si spara
-    if (useAmmo && ammo === 0) {
-      play('click')
-      say('Ricarica! Alza il fucile o tieni premuto', 1500, 'warn')
-      return
-    }
+    if (!gun.take(now)) return play('click') // scotta ancora
     lastShot = now
-    if (useAmmo) ammo--
     shots++
     play('pew')
     beamFx(color)
@@ -307,7 +299,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       }
     }
 
-    if (useAmmo && phase === 'gioco') reload(now)
+    if (phase === 'gioco') gun.tick(now)
 
     draw(now)
     updateHud()
@@ -434,7 +426,8 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   function updateHud() {
     const time = training ? 'Allenamento' : fmt(Math.max(0, opts.duration - gameT))
     const live = multi ? multi.board() : []
-    const key = `${score}|${streak}|${ammo}|${time}|${live.map((l) => l.name + l.score).join()}`
+    const ammo = gun.shown(performance.now())
+    const key = `${score}|${streak}|${ammo}|${gun.hot()}|${time}|${live.map((l) => l.name + l.score).join()}`
     if (key === hudKey) return
     hudKey = key
     $('score').textContent = String(score)
@@ -442,8 +435,8 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     $('time').textContent = time
     if (multi)
       $('live').innerHTML = live.slice(0, 4).map((l) => `<li class="${l.me ? 'mine' : ''}">${esc(l.name)} <b>${l.score}</b></li>`).join('')
-    $('ammo').innerHTML = useAmmo
-      ? `<span class="ammo">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(AMMO - ammo)}</span>`
+    $('ammo').innerHTML = opts.heat && !training
+      ? `<span class="ammo ${gun.hot() ? 'hot' : ''}">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(AMMO - ammo)}</span>`
       : '<span class="ammo-free">Colpi infiniti</span>'
   }
 

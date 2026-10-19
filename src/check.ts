@@ -1,7 +1,7 @@
 // Controllo della logica pura: npm run check
 import assert from 'node:assert/strict'
 import { D, deviceQuat, dirFrom, forward, fovFromFocal, inPoly, project, qRot, solveFocal, viewFor, yawOf } from './math.ts'
-import { claim, COLORS, DEFAULT_CONFIG, freeColor, OUT_MS, resetForRound, SAFE_MS, sharedTargets, shoot, standings, type Player, type Room } from './rules.ts'
+import { claim, COLORS, COOL_MS, DEFAULT_CONFIG, freeColor, OUT_MS, resetForRound, SAFE_MS, sharedTargets, shoot, standings, type Player, type Room } from './rules.ts'
 import { insertRecord } from './settings.ts'
 import { schedule, zDist, ZOMBIE, zombieSchedule } from './targets.ts'
 
@@ -91,7 +91,9 @@ assert.equal(pa.ammo, 10 - 8) // 8 spari validi su 10 colpi
 assert.equal(shoot(lt, pa, 99, (now += 300))?.hit, null) // marker di nessuno
 assert.equal(pa.score, 6 + 3) // con altri in partita il foglio di prova non vale
 shoot(lt, pa, null, (now += 300)) // decimo colpo
-assert.equal(shoot(lt, pa, 99, (now += 300)), null) // colpi finiti
+assert.equal(shoot(lt, pa, 99, (now += 300)), null) // fucile caldo
+assert.notEqual(shoot(lt, pa, null, (now += COOL_MS)), null) // raffreddato: si spara di nuovo
+assert.equal(pa.ammo, 9)
 lt.config.mode = 'squadre'
 pc.ammo = 10
 assert.equal(shoot(lt, pc, 1, (now += 300))?.hit, null) // niente fuoco amico

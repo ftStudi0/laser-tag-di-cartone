@@ -14,7 +14,8 @@ export type Player = {
   ready: Ready
   online: boolean
   life: number
-  ammo: number
+  ammo: number // colpi prima che il fucile si scaldi
+  hotUntil: number // il fucile si raffredda fino a
   lastShot: number
   outUntil: number // fuori gioco fino a
   safeUntil: number // invulnerabile fino a
@@ -31,7 +32,7 @@ export type Config = {
   mode: 'ffa' | 'squadre'
   duration: number
   life: number
-  ammo: number // 0 = infinite
+  ammo: number // 0 = colpi infiniti, altrimenti dopo tanti colpi il fucile si scalda
   plays: boolean
   theme: Theme // giochi a bersagli
   diff: Diff
@@ -69,7 +70,6 @@ export type ClientMsg =
   | { t: 'stop' }
   | { t: 'volume'; v: number }
   | { t: 'shot'; marker: number | null }
-  | { t: 'reload' }
   | { t: 'score'; score: number; shots: number; good: number; best: number }
   | { t: 'claim'; id: number; at: number }
 // Messaggi dal server al telefono.
@@ -83,6 +83,7 @@ export const SAFE_MS = 3000
 export const RATE_MS = 300
 export const COUNTDOWN_MS = 3000
 export const REST_MS = 60_000
+export const COOL_MS = 2000 // il fucile caldo si raffredda in 2 secondi
 export const MAX_MARKER = 12
 export const COLORS = ['#ff5a5f', '#ff9f1c', '#ffd23f', '#2ec27e', '#3d8bfd', '#a66cff', '#ff6fb5', '#00b8c4']
 // Il colore che si vuole, se nessun altro ce l'ha; altrimenti il primo libero.
@@ -119,7 +120,7 @@ export function settle(p: Player, cfg: Config, now: number) {
 }
 
 export function resetForRound(p: Player, cfg: Config) {
-  Object.assign(p, { life: cfg.life, ammo: cfg.ammo, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0 })
+  Object.assign(p, { life: cfg.life, ammo: cfg.ammo, hotUntil: 0, lastShot: 0, outUntil: 0, safeUntil: 0, score: 0, hits: 0, elims: 0, outs: 0, shots: 0, best: 0 })
 }
 
 // Applica uno sparo. Restituisce null se lo sparo non vale (fuori gioco, cadenza, munizioni).
@@ -129,10 +130,13 @@ export function shoot(r: Room, shooter: Player, marker: number | null, now: numb
   settle(shooter, c, now)
   if (!running(r, now) || status(shooter, now) !== 'in gioco') return null
   if (now - shooter.lastShot < RATE_MS - 60) return null // un po' di margine per il ritardo della rete
-  if (c.ammo && shooter.ammo <= 0) return null
+  if (c.ammo && shooter.ammo <= 0) {
+    if (now < shooter.hotUntil - 250) return null // scotta ancora (con un po' di margine per la rete)
+    shooter.ammo = c.ammo
+  }
   shooter.lastShot = now
   shooter.shots++
-  if (c.ammo) shooter.ammo--
+  if (c.ammo && --shooter.ammo === 0) shooter.hotUntil = now + COOL_MS
   const t = marker == null ? undefined : participants(r).find((p) => p.marker === marker && p !== shooter)
   if (!t) {
     if (marker != null && practice(r, shooter, marker)) shooter.hits++, shooter.score++
@@ -150,6 +154,7 @@ export function shoot(r: Room, shooter: Player, marker: number | null, now: numb
     t.safeUntil = now + OUT_MS + SAFE_MS
     t.outs++
     t.ammo = c.ammo
+    t.hotUntil = 0
     shooter.elims++
     shooter.score += 3
   }
