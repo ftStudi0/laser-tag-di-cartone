@@ -1,14 +1,15 @@
 import '@fontsource-variable/baloo-2'
 import './style.css'
 import { setVolume, unlockAudio } from './audio.ts'
+import { loadDuelRecord, playDuel, type DuelResult } from './duel.ts'
 import { fmt, playSolo, type Result } from './game.ts'
 import { icon } from './icons.ts'
 import { createGame, joinScreen } from './lobby.ts'
 import { aimTest, calibrateAim, calibrateFov, compassTest, triggerTest } from './prepare.ts'
 import { printScreen } from './print.ts'
 import { mode, MODE_TEXT, startSensors } from './sensors.ts'
-import { COLORS, loadRecords, MODELS, recordKey, saveSettings, settings } from './settings.ts'
-import type { Diff, Theme } from './targets.ts'
+import { COLORS, loadRecords, MODELS, recordKey, saveSettings, settings, type RecGame } from './settings.ts'
+import { BOOTH, type Diff, type Theme } from './targets.ts'
 import { drawTarget, THEMES } from './themes.ts'
 import { app, esc, goFullscreen, on, render } from './ui.ts'
 
@@ -50,7 +51,7 @@ function home() {
       <p class="safety">Si gioca camminando, non correndo. Prima di iniziare, libera la stanza dagli ostacoli.</p>
     </header>
     <div class="grid">
-      <button class="big primary" data-go="solo">${icon('target', 30)}Gioca da sola/o</button>
+      <button class="big primary" data-go="solo">${icon('target', 30)}Gioca da sola/o<small>Bersagli, chiosco, duello</small></button>
       <button class="big" data-go="create">${icon('megaphone', 30)}Crea partita<small>Laser tag</small></button>
       <button class="big" data-go="join">${icon('enter', 30)}Entra in partita</button>
       <button class="big" data-go="prepare">${icon('wrench', 30)}Prepara il fucile</button>
@@ -86,30 +87,47 @@ function home() {
   on('[data-go]', (el) => SCREENS[el.dataset.go!]())
 }
 
+const SOLO = { intorno: 'Bersagli intorno', chiosco: 'Chiosco del luna park', duello: 'Duello nel Far West' }
+
 function soloSetup() {
+  const g = settings.solo
+  const themes = (Object.keys(THEMES) as Theme[]).filter((t) => g !== 'chiosco' || t !== 'zombi')
+  if (g === 'chiosco' && settings.theme === 'zombi') settings.theme = 'palloncini'
   render(`
-    <header class="bar"><button class="btn small" data-back>${icon('back', 20)}Menu</button><h2>Tiro al bersaglio</h2></header>
+    <header class="bar"><button class="btn small" data-back>${icon('back', 20)}Menu</button><h2>Gioca da sola/o</h2></header>
+    <div class="seg">${(Object.keys(SOLO) as (keyof typeof SOLO)[]).map((k) => `<button class="${k === g ? 'on' : ''}" data-solo="${k}">${SOLO[k]}</button>`).join('')}</div>
+    ${g === 'duello' ? `
+    <p class="note">Punta il fucile davanti a te. Al suono della campana spunta il bandito Baffone: colpiscilo prima che ti spruzzi con la sua pistola ad acqua!
+      Se spari prima della campana perdi il round. Vince chi arriva prima a 3.</p>
+    <h3>Difficoltà</h3>
+    <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((d) => `<button class="${d === settings.diff ? 'on' : ''}" data-diff="${d}">${DIFFS[d]}</button>`).join('')}</div>` : `
+    ${g === 'chiosco' ? `<p class="note">Come al luna park: davanti a te scorrono tre file di bersagli. Hai ${BOOTH.shots} colpi e un minuto, alla fine vinci un premio.</p>` : ''}
     <h3>Tema</h3>
-    <div class="row">${(Object.keys(THEMES) as Theme[])
+    <div class="row">${themes
       .map((t) => `<button class="card ${t === settings.theme ? 'on' : ''}" data-theme="${t}"><canvas width="240" height="150" aria-hidden="true"></canvas>${THEMES[t]}</button>`)
       .join('')}</div>
     <div class="two"><div>
     <h3>Difficoltà</h3>
     <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((d) => `<button class="${d === settings.diff ? 'on' : ''}" data-diff="${d}">${DIFFS[d]}</button>`).join('')}</div>
-    <h3>Colpi</h3>
+    ${g === 'intorno' ? `<h3>Colpi</h3>
     <div class="seg"><button class="${settings.heat ? '' : 'on'}" data-heat="0">Infiniti</button><button class="${settings.heat ? 'on' : ''}" data-heat="1">Il fucile si scalda</button></div>
-    <p class="note">Se il fucile si scalda, dopo 10 colpi si ferma 2 secondi per raffreddarsi.</p>
+    <p class="note">Se il fucile si scalda, dopo 10 colpi si ferma 2 secondi per raffreddarsi.</p>` : ''}
     </div><div>
-    <h3>Durata</h3>
-    <div class="seg">${DURATIONS.map(([s, l]) => `<button class="${s === settings.duration ? 'on' : ''}" data-dur="${s}">${l}</button>`).join('')}</div>
+    ${g === 'intorno' ? `<h3>Durata</h3>
+    <div class="seg">${DURATIONS.map(([s, l]) => `<button class="${s === settings.duration ? 'on' : ''}" data-dur="${s}">${l}</button>`).join('')}</div>` : ''}
     </div></div>
     <div class="zopts" ${settings.theme === 'zombi' ? '' : 'hidden'}>
       <h3>Zombi disegnati in</h3>
       <div class="seg"><button class="${settings.z3d ? '' : 'on'}" data-z3d="0">2D, più leggero</button><button class="${settings.z3d ? 'on' : ''}" data-z3d="1">3D</button></div>
     </div>
-    <div class="legend" data-legend></div>
+    <div class="legend" data-legend></div>`}
     <div class="cta-bar"><button class="big primary go" data-start>${icon('target', 30)}Via!</button></div>
   `)
+  on('[data-solo]', (el) => {
+    settings.solo = el.dataset.solo as keyof typeof SOLO
+    saveSettings()
+    soloSetup()
+  })
   app.querySelectorAll<HTMLButtonElement>('[data-theme]').forEach((b) => {
     const c = b.querySelector('canvas')!.getContext('2d')!
     c.scale(2, 2) // disegno nitido sugli schermi ad alta densità
@@ -126,6 +144,7 @@ function soloSetup() {
       })
     })
   const legend = () => {
+    if (g === 'duello') return
     app.querySelector('[data-legend]')!.innerHTML =
       settings.theme === 'zombi'
         ? '<span>Gli zombi buffi vengono verso di te: colpiscili prima che ti arrivino vicino!</span><span>Zombi: <b>1 punto</b></span><span>Con la fascia rossa, più veloce: <b>2 punti</b></span><span>Con la corona: <b>5 punti</b></span>'
@@ -147,7 +166,13 @@ function soloSetup() {
     if (m === 'nessuno')
       return alert('Questo telefono non ha il giroscopio, quindi non sa quando ti giri. I bersagli intorno non funzionano: arriverà la modalità Bersagli sui muri.')
     app.hidden = true
-    playSolo({ theme: settings.theme, diff: settings.diff, duration: settings.duration, heat: settings.heat }, (r) => {
+    if (g === 'duello')
+      return playDuel(settings.diff, (r) => {
+        app.hidden = false
+        if (r) duelResults(r)
+        else soloSetup()
+      })
+    playSolo({ theme: settings.theme, diff: settings.diff, duration: settings.duration, heat: settings.heat, booth: g === 'chiosco' }, (r) => {
       app.hidden = false
       if (r) results(r)
       else soloSetup()
@@ -163,33 +188,56 @@ function recordTable(key: string, highlight = -1) {
     .join('')}</table>`
 }
 
-function results(r: Result) {
-  const acc = r.shots ? Math.round((r.good / r.shots) * 100) : 0
+// Il premio del chiosco, come al luna park: più punti, premio più grande.
+function prize(r: Result) {
+  const p = r.score >= 30 ? 'la coppa d\'oro' : r.score >= 18 ? 'l\'unicorno gigante' : r.score >= 8 ? 'l\'orsetto di peluche' : 'la caramella'
+  return `Hai vinto ${p}!`
+}
+
+function duelResults(r: DuelResult) {
   render(`
-    <header class="bar"><h2>Fine partita!</h2></header>
-    <div class="score-big">${r.score}<small>punti</small></div>
-    ${r.rank === 0 ? `<p class="badge">${icon('trophy', 26)}Nuovo record!</p>` : r.rank > 0 ? `<p class="badge">Sei al ${r.rank + 1}° posto in classifica</p>` : ''}
-    <div class="stats"><span>Precisione <b>${acc}%</b></span><span>Serie migliore <b>${r.best}</b></span><span>Colpi <b>${r.shots}</b></span></div>
-    <div class="row"><button class="big primary" data-again>${icon('target', 30)}Gioca ancora</button><button class="big" data-home>${icon('back', 30)}Menu</button></div>
-    <h3>Classifica: ${r.theme === 'zombi' ? 'Zombi, ' : ''}${DIFFS[r.diff]}, ${fmt(r.duration)}</h3>
-    ${recordTable(recordKey(r.diff, r.duration, r.theme === 'zombi'), r.rank)}
+    <header class="bar"><h2>${r.won ? 'Hai vinto il duello!' : 'Ha vinto Baffone'}</h2></header>
+    <div class="score-big">${r.me} a ${r.bot}<small>round</small></div>
+    ${r.best ? `<div class="stats"><span>Il più veloce <b>${r.best} ms</b></span>${r.record ? `<span>Record <b>${r.record} ms</b></span>` : ''}</div>` : ''}
+    ${r.best && r.best === r.record ? `<p class="badge">${icon('trophy', 26)}Nuovo record di velocità!</p>` : ''}
+    <div class="row"><button class="big primary" data-again>${icon('target', 30)}Un altro duello</button><button class="big" data-home>${icon('back', 30)}Menu</button></div>
   `)
   on('[data-again]', soloSetup)
   on('[data-home]', home)
 }
 
-function records(diff: Diff = settings.diff, dur = settings.duration || 60, zombi = settings.theme === 'zombi') {
+function results(r: Result) {
+  const acc = r.shots ? Math.round((r.good / r.shots) * 100) : 0
+  render(`
+    <header class="bar"><h2>Fine partita!</h2></header>
+    <div class="score-big">${r.score}<small>punti</small></div>
+    ${r.booth ? `<p class="badge">${icon('trophy', 26)}${prize(r)}</p>` : ''}
+    ${r.rank === 0 ? `<p class="badge">${icon('trophy', 26)}Nuovo record!</p>` : r.rank > 0 ? `<p class="badge">Sei al ${r.rank + 1}° posto in classifica</p>` : ''}
+    <div class="stats"><span>Precisione <b>${acc}%</b></span><span>Serie migliore <b>${r.best}</b></span><span>Colpi <b>${r.shots}</b></span></div>
+    <div class="row"><button class="big primary" data-again>${icon('target', 30)}Gioca ancora</button><button class="big" data-home>${icon('back', 30)}Menu</button></div>
+    <h3>Classifica: ${r.booth ? 'Chiosco, ' : r.theme === 'zombi' ? 'Zombi, ' : ''}${DIFFS[r.diff]}${r.booth ? '' : `, ${fmt(r.duration)}`}</h3>
+    ${recordTable(recordKey(r.diff, r.duration, r.booth ? 'chiosco' : r.theme === 'zombi' ? 'zombi' : 'tiro'), r.rank)}
+  `)
+  on('[data-again]', soloSetup)
+  on('[data-home]', home)
+}
+
+const REC_GAMES: Record<RecGame, string> = { tiro: 'Bersagli', zombi: 'Zombi buffi', chiosco: 'Chiosco' }
+
+function records(diff: Diff = settings.diff, dur = settings.duration || 60, game: RecGame = settings.theme === 'zombi' ? 'zombi' : 'tiro') {
+  const d = game === 'chiosco' ? BOOTH.duration : dur
   render(`
     <header class="bar"><button class="btn small" data-back>${icon('back', 20)}Menu</button><h2>Record</h2></header>
-    <div class="seg"><button class="${zombi ? '' : 'on'}" data-game="0">Bersagli</button><button class="${zombi ? 'on' : ''}" data-game="1">Zombi buffi</button></div>
-    <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((d) => `<button class="${d === diff ? 'on' : ''}" data-diff="${d}">${DIFFS[d]}</button>`).join('')}</div>
-    <div class="seg">${DURATIONS.filter(([s]) => s).map(([s, l]) => `<button class="${s === dur ? 'on' : ''}" data-dur="${s}">${l}</button>`).join('')}</div>
-    ${recordTable(recordKey(diff, dur, zombi))}
+    <div class="seg">${(Object.keys(REC_GAMES) as RecGame[]).map((k) => `<button class="${k === game ? 'on' : ''}" data-game="${k}">${REC_GAMES[k]}</button>`).join('')}</div>
+    <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((x) => `<button class="${x === diff ? 'on' : ''}" data-diff="${x}">${DIFFS[x]}</button>`).join('')}</div>
+    ${game === 'chiosco' ? '' : `<div class="seg">${DURATIONS.filter(([s]) => s).map(([s, l]) => `<button class="${s === dur ? 'on' : ''}" data-dur="${s}">${l}</button>`).join('')}</div>`}
+    ${recordTable(recordKey(diff, d, game))}
+    <p class="note">Duello nel Far West, il più veloce: <b>${loadDuelRecord() ? `${loadDuelRecord()} ms` : 'ancora nessuno'}</b></p>
   `)
   on('[data-back]', home)
-  on('[data-game]', (el) => records(diff, dur, el.dataset.game === '1'))
-  on('[data-diff]', (el) => records(el.dataset.diff as Diff, dur, zombi))
-  on('[data-dur]', (el) => records(diff, Number(el.dataset.dur), zombi))
+  on('[data-game]', (el) => records(diff, dur, el.dataset.game as RecGame))
+  on('[data-diff]', (el) => records(el.dataset.diff as Diff, dur, game))
+  on('[data-dur]', (el) => records(diff, Number(el.dataset.dur), game))
 }
 
 function prepare() {

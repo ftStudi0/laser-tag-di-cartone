@@ -5,6 +5,8 @@ Giochi di tiro in realtà aumentata da giocare in casa con il telefono montato s
 ## Giochi
 
 1. **Tiro al bersaglio**: da sole, bersagli virtuali intorno nella stanza. Funziona offline.
+   - **Chiosco del luna park**: tre file di bersagli che scorrono davanti, 20 colpi e un premio alla fine.
+   - **Duello nel Far West**: alla campana spunta il bandito Baffone, va colpito prima che spruzzi. Vince chi arriva a 3.
 2. **Sfida a bersagli**: multiplayer, stessa sequenza di bersagli per tutte, classifica live.
 3. **Bersagli condivisi**: multiplayer, gli stessi bersagli per tutte, chi colpisce per prima vince il punto.
 4. **Laser tag**: ci si colpisce a vicenda mirando ai marker stampati sul petto e sulla schiena.

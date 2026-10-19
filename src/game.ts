@@ -6,13 +6,13 @@ import { recordKey, saveRecord, settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, videoSize, view,
 } from './stage.ts'
-import { azAt, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
+import { azAt, BOOTH, boothSchedule, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
 import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
 import { heat, onTrigger } from './trigger.ts'
 import { esc } from './ui.ts'
 
-export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean } // duration 0 = allenamento; heat: il fucile si scalda
+export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean; booth?: boolean } // duration 0 = allenamento; heat: il fucile si scalda; booth: chiosco del luna park
 export type Result = GameOpts & { score: number; shots: number; good: number; best: number; rank: number }
 // Sfida a bersagli: stesso gioco, ma seme, tempo e pausa arrivano dal server e i punti vanno a lui.
 export type Multi = {
@@ -42,13 +42,15 @@ const FLY = 0.4 // secondi dell'animazione "vola via"
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void, multi?: Multi) {
+  const booth = !!opts.booth
+  if (booth) opts = { ...opts, duration: BOOTH.duration, heat: false, theme: opts.theme === 'zombi' ? 'palloncini' : opts.theme }
   const training = opts.duration === 0 && !multi
   const shared = multi?.shared
   const sizeMul = (mode() === 'bussola' ? 1.5 : 1) * (shared?.size ?? 1) // la bussola trema: bersagli più grandi
   const gun = heat(opts.heat && !training ? AMMO : 0)
   const zombi = opts.theme === 'zombi'
   const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
-  const targets: Target[] = training ? [] : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
+  const targets: Target[] = training ? [] : booth ? boothSchedule(seed, opts.diff, sizeMul) : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
   const color = multi?.color ?? settings.color
   const H = settings.gunH // altezza degli occhi sul pavimento virtuale
   let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
@@ -164,8 +166,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
     if (phase !== 'gioco' || paused || size.h > size.w) return
     if (now - lastShot < 300) return // cadenza massima
+    if (booth && shots >= BOOTH.shots) return play('click')
     if (!gun.take(now)) return play('click') // scotta ancora
     lastShot = now
+    if (booth && shots + 1 === BOOTH.shots) setTimeout(() => phase === 'gioco' && finish(false), 1200) // ultimo colpo: si vede com'è andata
     shots++
     play('pew')
     beamFx(color)
@@ -314,6 +318,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     const fwd = forward(sensors.q)
     let anyVisible = false
     const zs: { tg: Target; d: number; pop: number }[] = []
+    if (booth && phase !== 'mira') drawBooth(v)
     if (phase === 'gioco') {
       for (const tg of targets) {
         if (tg.born > gameT) continue
@@ -348,7 +353,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       }
       if (zombi) drawZombies(zs, v, t)
       // la freccia solo se non si vede nessun bersaglio da colpire, per non confondere
-      if (nearest && !anyVisible) arrow(nearest.d)
+      if (nearest && !anyVisible && !booth) arrow(nearest.d)
     }
     if (z3 && phase !== 'gioco') z3.render([], sensors.q, v, size.w, size.h, H, t)
     drawFx()
@@ -391,6 +396,30 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
   }
 
+  // Il chiosco: pannello di fondo, tre binari, tendone a righe e bancone, fissati davanti a dove hai puntato all'inizio.
+  function drawBooth(v: ReturnType<typeof view>) {
+    const quad = (a1: number, e1: number, a2: number, e2: number, fill: string) => {
+      const pts = [[a1, e1], [a2, e1], [a2, e2], [a1, e2]].map(([a, e]) => project(sensors.q, dirFrom(yaw0 + a, e), v))
+      if (pts.some((p) => !p)) return
+      ctx.fillStyle = fill
+      ctx.beginPath()
+      pts.forEach((p) => ctx.lineTo(p!.x, p!.y))
+      ctx.closePath()
+      ctx.fill()
+    }
+    const h = BOOTH.half + 5 * D, top = 13 * D, bottom = -13 * D
+    ctx.save()
+    ctx.globalAlpha = 0.85
+    quad(-h, bottom, h, top, '#bfe3ff')
+    ctx.globalAlpha = 1
+    for (const e of BOOTH.rows) quad(-h, e - 3.2 * D, h, e - 2.4 * D, '#a8743f') // binario sotto ogni fila
+    const n = 10
+    for (let i = 0; i < n; i++) quad(-h + (2 * h * i) / n, top, -h + (2 * h * (i + 1)) / n, top + 6 * D, i % 2 ? '#ffffff' : '#ff5a5f')
+    quad(-h, bottom - 5 * D, h, bottom, '#c98a4b')
+    quad(-h, bottom - 0.6 * D, h, bottom, '#8a5a2b')
+    ctx.restore()
+  }
+
   // Freccia sul bordo verso il bersaglio più vicino fuori schermo.
   function arrow([dx, dy]: [number, number]) {
     const n = Math.hypot(dx, dy) || 1
@@ -427,7 +456,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     const time = training ? 'Allenamento' : fmt(Math.max(0, opts.duration - gameT))
     const live = multi ? multi.board() : []
     const ammo = gun.shown(performance.now())
-    const key = `${score}|${streak}|${ammo}|${gun.hot()}|${time}|${live.map((l) => l.name + l.score).join()}`
+    const key = `${score}|${streak}|${ammo}|${shots}|${gun.hot()}|${time}|${live.map((l) => l.name + l.score).join()}`
     if (key === hudKey) return
     hudKey = key
     $('score').textContent = String(score)
@@ -435,7 +464,9 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     $('time').textContent = time
     if (multi)
       $('live').innerHTML = live.slice(0, 4).map((l) => `<li class="${l.me ? 'mine' : ''}">${esc(l.name)} <b>${l.score}</b></li>`).join('')
-    $('ammo').innerHTML = opts.heat && !training
+    $('ammo').innerHTML = booth
+      ? `<span class="ammo-free">Colpi <b>${BOOTH.shots - shots}</b></span>`
+      : opts.heat && !training
       ? `<span class="ammo ${gun.hot() ? 'hot' : ''}">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(AMMO - ammo)}</span>`
       : '<span class="ammo-free">Colpi infiniti</span>'
   }
@@ -456,7 +487,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (aborted || training) return onEnd(null)
     play('end')
     const name = settings.name || 'Senza nome'
-    const rank = saveRecord(recordKey(opts.diff, opts.duration, zombi), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
+    const rank = saveRecord(recordKey(opts.diff, opts.duration, booth ? 'chiosco' : zombi ? 'zombi' : 'tiro'), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
     onEnd({ ...opts, score, shots, good, best, rank })
   }
 }

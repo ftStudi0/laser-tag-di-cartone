@@ -108,3 +108,25 @@ export function zombieSchedule(seed: number, diff: Diff, duration: number, sizeM
   }
   return out
 }
+
+// Chiosco del luna park: tre file di bersagli che scorrono davanti, a destra e a sinistra, sempre più veloci.
+export const BOOTH = { half: 24 * D, rows: [-8 * D, 0, 8 * D], dist: 4, shots: 20, duration: 60 } // sta quasi tutto nello schermo
+const BDIFF = { facile: { speed: 0.16, every: 0.9, r: 0.2 }, media: { speed: 0.24, every: 0.7, r: 0.16 }, difficile: { speed: 0.34, every: 0.55, r: 0.13 } }
+
+export function boothSchedule(seed: number, diff: Diff, sizeMul = 1): Target[] {
+  const d = BDIFF[diff]
+  const rnd = mulberry32(seed)
+  const out: Target[] = []
+  for (let t = 1, id = 0; t < BOOTH.duration; t += d.every * (0.7 + rnd() * 0.6), id++) {
+    const row = Math.floor(rnd() * 3)
+    const dir = row % 2 ? -1 : 1 // le file vanno in versi alterni
+    const roll = rnd()
+    const kind: Kind = roll < 0.07 ? 'dorato' : roll < 0.17 ? 'amico' : roll < 0.37 ? 'veloce' : 'normale'
+    const speed = d.speed * (1 + (t / BOOTH.duration) * 0.6) * (kind === 'veloce' ? 1.6 : 1)
+    out.push({
+      id, kind, az: -dir * BOOTH.half, el: BOOTH.rows[row], born: t, life: (2 * BOOTH.half) / speed,
+      r: d.r * sizeMul * (kind === 'dorato' ? 0.8 : 1), dist: BOOTH.dist, vaz: dir * speed, tint: Math.floor(rnd() * 4),
+    })
+  }
+  return out
+}

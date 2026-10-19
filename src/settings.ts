@@ -28,6 +28,7 @@ const DEFAULTS = {
   z3d: false, // zombi disegnati in 3D
   marker: 1, // numero del proprio marker stampato
   heat: false, // il fucile si scalda dopo 10 colpi
+  solo: 'intorno' as 'intorno' | 'chiosco' | 'duello', // gioco da soli scelto
 }
 export type Settings = typeof DEFAULTS
 
@@ -55,7 +56,8 @@ export function insertRecord(list: Rec[], r: Rec): [Rec[], number] {
   return [l, l.indexOf(r)]
 }
 
-export const recordKey = (diff: Diff, duration: number, zombi = false) => `lt:rec:${zombi ? 'zombi' : 'tiro'}:${diff}:${duration}`
+export type RecGame = 'tiro' | 'zombi' | 'chiosco'
+export const recordKey = (diff: Diff, duration: number, game: RecGame = 'tiro') => `lt:rec:${game}:${diff}:${duration}`
 export const loadRecords = (key: string): Rec[] => read(key, [])
 
 // Restituisce la posizione in classifica (0 = primo) oppure -1.
