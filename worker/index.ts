@@ -136,13 +136,14 @@ export class Room extends DurableObject<Env> {
         break
       }
       case 'shot': {
+        const score = me.score
         const res = shoot(r, me, m.marker, now)
         if (!res) return
-        if (!res.hit) {
+        if (!res.hit && me.score === score) {
           this.save()
           return // uno sparo a vuoto non cambia niente per gli altri: nessun messaggio
         }
-        ev = { k: 'hit', by: me.id, to: res.hit.id, out: res.out }
+        if (res.hit) ev = { k: 'hit', by: me.id, to: res.hit.id, out: res.out } // altrimenti foglio di prova: si manda solo il punteggio
         break
       }
       case 'config':

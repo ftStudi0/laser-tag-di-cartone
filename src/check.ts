@@ -89,12 +89,18 @@ now += SAFE_MS
 assert.equal(shoot(lt, pa, 2, now)?.hit, pb)
 assert.equal(pa.ammo, 10 - 8) // 8 spari validi su 10 colpi
 assert.equal(shoot(lt, pa, 99, (now += 300))?.hit, null) // marker di nessuno
+assert.equal(pa.score, 6 + 3) // con altri in partita il foglio di prova non vale
 shoot(lt, pa, null, (now += 300)) // decimo colpo
 assert.equal(shoot(lt, pa, 99, (now += 300)), null) // colpi finiti
 lt.config.mode = 'squadre'
 pc.ammo = 10
 assert.equal(shoot(lt, pc, 1, (now += 300))?.hit, null) // niente fuoco amico
 assert.equal(standings(lt)[0].id, 'a')
+// da soli: i numeri liberi sono fogli di prova, il proprio no
+const solo: Room = { ...lt, config: { ...DEFAULT_CONFIG }, pausedAt: 0, players: [mk('s', 1, 0)] }
+shoot(solo, solo.players[0], 5, now)
+shoot(solo, solo.players[0], 1, now + 300)
+assert.equal(solo.players[0].score, 1)
 lt.pausedAt = now
 assert.equal(shoot(lt, pc, 2, (now += 300)), null) // in pausa non si spara
 

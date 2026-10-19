@@ -127,7 +127,10 @@ export function shoot(r: Room, shooter: Player, marker: number | null, now: numb
   shooter.shots++
   if (c.ammo) shooter.ammo--
   const t = marker == null ? undefined : participants(r).find((p) => p.marker === marker && p !== shooter)
-  if (!t) return { hit: null, out: false }
+  if (!t) {
+    if (marker != null && practice(r, shooter, marker)) shooter.hits++, shooter.score++
+    return { hit: null, out: false }
+  }
   settle(t, c, now)
   if (status(t, now) !== 'in gioco') return { hit: null, out: false }
   if (c.mode === 'squadre' && t.team === shooter.team) return { hit: null, out: false } // niente fuoco amico
@@ -145,6 +148,10 @@ export function shoot(r: Room, shooter: Player, marker: number | null, now: numb
   }
   return { hit: t, out }
 }
+
+// Da soli: i numeri che nessuno ha scelto sono fogli di prova e valgono un punto.
+export const practice = (r: Room, p: Player, marker: number) =>
+  marker !== p.marker && participants(r).length === 1 && participants(r)[0] === p
 
 export function standings(r: Room): Standing[] {
   return participants(r)

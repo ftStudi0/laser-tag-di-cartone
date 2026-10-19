@@ -4,7 +4,7 @@ import { icon } from './icons.ts'
 import { D } from './math.ts'
 import { createDetector, drawMarker, markerUnder, type Detector, type Marker } from './markers.ts'
 import type { Net } from './net.ts'
-import { COUNTDOWN_MS, endAt, participants, remaining, RATE_MS, status, TEAMS, type Ev, type Player, type Room } from './rules.ts'
+import { COUNTDOWN_MS, endAt, participants, practice, remaining, RATE_MS, status, TEAMS, type Ev, type Player, type Room } from './rules.ts'
 import { mode, sensors } from './sensors.ts'
 import { settings } from './settings.ts'
 import {
@@ -108,7 +108,8 @@ export async function playLaser(net: Net, onEnd: () => void) {
     if (!m) return null
     const self = me()
     const p = participants(room).find((p) => p.marker === m.num && p.id !== net.me)
-    if (!p || !self) return null
+    if (!self) return null
+    if (!p) return practice(room, self, m.num) ? { m, p: null } : null
     if (room.config.mode === 'squadre' && p.team === self.team) return null
     if (status(p, now) !== 'in gioco') return null
     return { m, p }
@@ -145,7 +146,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     }
     glow = { m: hit.m, t: performance.now() }
     play('hit')
-    burstFx(ax, ay, [color(), hit.p.color, '#ffffff', '#ffd23f'])
+    burstFx(ax, ay, [color(), hit.p?.color ?? '#ffd23f', '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
   }
 
@@ -251,14 +252,26 @@ export async function playLaser(net: Net, onEnd: () => void) {
   // Sopra il marker si disegna il bersaglio del giocatore con nome, cuori e punti. Il riconoscimento usa il video, non il disegno.
   function badge(m: Marker, now: number) {
     const p = room.players.find((p) => p.marker === m.num)
+    const self = me()
+    if (!p && self && practice(room, self, m.num)) return rings(m, '#ffd23f', ['Foglio di prova', `N. ${m.num}`])
     if (!p) return drawMarker(ctx, m, 'rgba(255,255,255,0.55)', 2)
+    const st = status(p, now)
+    const life = p.life <= 0 && now >= p.outUntil ? room.config.life : p.life
+    rings(
+      m,
+      st === 'fuori' ? '#9aa3ad' : room.config.mode === 'squadre' ? TEAMS[p.team].color : p.color,
+      [p.name, st === 'fuori' ? 'fuori gioco' : '\u2665'.repeat(Math.max(0, life)) + (st === 'protetto' ? ' scudo' : ''), `${p.score} punti`],
+      st === 'fuori' ? 0.6 : 0.92,
+      st !== 'fuori',
+    )
+  }
+
+  function rings(m: Marker, c: string, lines: string[], alpha = 0.92, hearts = false) {
     const cx = m.pts.reduce((s, q) => s + q[0], 0) / 4
     const cy = m.pts.reduce((s, q) => s + q[1], 0) / 4
     const r = Math.max(18, Math.hypot(m.pts[0][0] - m.pts[2][0], m.pts[0][1] - m.pts[2][1]) * 0.5)
-    const st = status(p, now)
-    const c = st === 'fuori' ? '#9aa3ad' : room.config.mode === 'squadre' ? TEAMS[p.team].color : p.color
     ctx.save()
-    ctx.globalAlpha = st === 'fuori' ? 0.6 : 0.92
+    ctx.globalAlpha = alpha
     ;[c, '#ffffff', c, '#ffffff', c].forEach((col, i) => {
       ctx.fillStyle = col
       ctx.beginPath()
@@ -272,12 +285,9 @@ export async function playLaser(net: Net, onEnd: () => void) {
     ctx.lineJoin = 'round'
     ctx.lineWidth = 4
     ctx.strokeStyle = 'rgba(0,0,0,0.55)'
-    ctx.fillStyle = '#ffffff'
-    const life = p.life <= 0 && now >= p.outUntil ? room.config.life : p.life
-    const lines = [p.name, st === 'fuori' ? 'fuori gioco' : '\u2665'.repeat(Math.max(0, life)) + (st === 'protetto' ? ' scudo' : ''), `${p.score} punti`]
     lines.forEach((s, i) => {
       const y = cy - r - fs * (lines.length - i - 0.6)
-      ctx.fillStyle = i === 1 && st !== 'fuori' ? '#ff6fae' : '#ffffff' // cuori rosa come nella HUD
+      ctx.fillStyle = hearts && i === 1 ? '#ff6fae' : '#ffffff' // cuori rosa come nella HUD
       ctx.strokeText(s, cx, y)
       ctx.fillText(s, cx, y)
     })
