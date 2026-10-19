@@ -1,8 +1,9 @@
 // Server delle partite: un Durable Object per stanza, WebSocket con ibernazione.
 // Al server arrivano solo eventi di gioco (marker colpito, stato): mai immagini della fotocamera.
 import { DurableObject } from 'cloudflare:workers'
+import type { Target } from '../src/targets.ts'
 import {
-  COUNTDOWN_MS, DEFAULT_CONFIG, DURATIONS, endAt, MAX_MARKER, participants, resetForRound, REST_MS, running, shoot, standings,
+  CALIBRATE_MS, claim, COUNTDOWN_MS, DEFAULT_CONFIG, DURATIONS, endAt, MAX_MARKER, participants, REFS, resetForRound, REST_MS, running, sharedTargets, shoot, standings,
   type ClientMsg, type Config, type Ev, type Room as RoomState, type ServerMsg,
 } from '../src/rules.ts'
 
@@ -37,6 +38,7 @@ export default {
 export class Room extends DurableObject<Env> {
   room: RoomState | undefined
   secret: Secret | undefined
+  targets: { seed: number; list: Target[] } | null = null // ricalcolati dal seme, anche dopo l'ibernazione
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
@@ -51,7 +53,7 @@ export class Room extends DurableObject<Env> {
       if (this.room) return new Response('occupata', { status: 409 })
       const { code, key } = (await req.json()) as { code: string; key: string }
       this.room = {
-        code, phase: 'lobby', dirId: '', config: { ...DEFAULT_CONFIG }, players: [], startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null, seed: 0,
+        code, phase: 'lobby', dirId: '', config: { ...DEFAULT_CONFIG }, players: [], startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null, seed: 0, taken: {},
       }
       this.secret = { dirKey: key, keys: {} }
       this.save()
@@ -116,12 +118,23 @@ export class Room extends DurableObject<Env> {
         break
       case 'score':
         // Sfida a bersagli: ogni telefono conta i suoi colpi sui suoi bersagli (gioco in famiglia, niente anti trucchi)
-        if (r.config.game !== 'sfida' || !running(r, now + 2000)) return
-        me.score = num(m.score)
+        if (r.config.game === 'laser' || !running(r, now + 2000)) return
         me.shots = num(m.shots)
-        me.hits = Math.min(num(m.good), me.shots)
         me.best = num(m.best)
+        if (r.config.game === 'condivisi') {
+          this.save() // nei condivisi i punti li decide il server: qui solo spari e serie
+          return
+        }
+        me.score = num(m.score)
+        me.hits = Math.min(num(m.good), me.shots)
         break
+      case 'claim': {
+        // Bersagli condivisi: il primo messaggio che arriva vince il bersaglio
+        if (!this.targets || this.targets.seed !== r.seed) this.targets = { seed: r.seed, list: sharedTargets(r) }
+        const at = Math.max(now - 1000, Math.min(now, Number(m.at) || now))
+        if (claim(r, me, this.targets.list, Number(m.id), at) === null) return
+        break
+      }
       case 'shot': {
         const res = shoot(r, me, m.marker, now)
         if (!res) return
@@ -144,7 +157,9 @@ export class Room extends DurableObject<Env> {
       case 'start':
         if (!isDir || r.phase !== 'lobby' || now < r.restUntil || participants(r).length === 0) return
         r.phase = 'gioco'
-        r.startAt = now + COUNTDOWN_MS + 500 // mezzo secondo perché il messaggio arrivi a tutti prima del 3
+        // mezzo secondo perché il messaggio arrivi a tutti prima del 3; nei condivisi prima si punta il riferimento
+        r.startAt = now + (r.config.game === 'condivisi' ? CALIBRATE_MS : COUNTDOWN_MS + 500)
+        r.taken = {}
         r.pausedAt = 0
         r.pausedMs = 0
         r.results = null
@@ -275,7 +290,7 @@ const num = (n: unknown) => Math.max(0, Math.min(10_000, Math.round(Number(n)) |
 const clampMarker = (n: number) => Math.max(1, Math.min(MAX_MARKER, Math.round(Number(n)) || 1))
 
 function sanitize(c: Config, prev: Config): Config {
-  const game = c.game === 'sfida' ? 'sfida' : 'laser'
+  const game = c.game === 'sfida' || c.game === 'condivisi' ? c.game : 'laser'
   const ds = DURATIONS[game]
   return {
     game,
@@ -286,6 +301,7 @@ function sanitize(c: Config, prev: Config): Config {
     plays: !!c.plays,
     theme: (['palloncini', 'stelle', 'mostri', 'lattine', 'zombi'] as const).find((t) => t === c.theme) ?? 'palloncini',
     diff: (['facile', 'media', 'difficile'] as const).find((d) => d === c.diff) ?? 'facile',
+    ref: REFS.includes(c.ref) ? c.ref : REFS[0],
   }
 }
 

@@ -1,7 +1,7 @@
 // Controllo della logica pura: npm run check
 import assert from 'node:assert/strict'
 import { D, deviceQuat, dirFrom, forward, fovFromFocal, inPoly, project, qRot, solveFocal, viewFor, yawOf } from './math.ts'
-import { DEFAULT_CONFIG, OUT_MS, resetForRound, SAFE_MS, shoot, standings, type Player, type Room } from './rules.ts'
+import { claim, DEFAULT_CONFIG, OUT_MS, resetForRound, SAFE_MS, sharedTargets, shoot, standings, type Player, type Room } from './rules.ts'
 import { insertRecord } from './settings.ts'
 import { schedule, zDist, ZOMBIE, zombieSchedule } from './targets.ts'
 
@@ -71,7 +71,7 @@ const mk = (id: string, marker: number, team: 0 | 1): Player => {
 }
 const lt: Room = {
   code: 'ABCD', phase: 'gioco', dirId: 'a', config: { ...DEFAULT_CONFIG }, players: [mk('a', 1, 0), mk('b', 2, 1), mk('c', 3, 0)],
-  startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null, seed: 0,
+  startAt: 0, pausedAt: 0, pausedMs: 0, restUntil: 0, volume: 1, results: null, seed: 0, taken: {},
 }
 const [pa, pb, pc] = lt.players
 let now = 1000
@@ -97,5 +97,17 @@ assert.equal(shoot(lt, pc, 1, (now += 300))?.hit, null) // niente fuoco amico
 assert.equal(standings(lt)[0].id, 'a')
 lt.pausedAt = now
 assert.equal(shoot(lt, pc, 2, (now += 300)), null) // in pausa non si spara
+
+// bersagli condivisi: il primo che arriva lo prende, una volta sola, solo mentre è in gioco
+lt.pausedAt = 0
+Object.assign(lt, { startAt: 0, pausedMs: 0, seed: 42, taken: {}, config: { ...DEFAULT_CONFIG, game: 'condivisi', duration: 90 } })
+const sh = sharedTargets(lt)
+const t0 = sh.find((t) => t.kind === 'normale')!
+const at = (t0.born + 0.5) * 1000
+assert.equal(claim(lt, pb, sh, t0.id, at), 1)
+assert.equal(claim(lt, pc, sh, t0.id, at + 10), null) // già preso
+assert.equal(lt.taken[t0.id], 'b')
+const late = sh.find((t) => t.id !== t0.id)!
+assert.equal(claim(lt, pc, sh, late.id, (late.born + late.life + 2) * 1000), null) // ormai volato via
 
 console.log('ok')

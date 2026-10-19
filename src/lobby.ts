@@ -2,9 +2,9 @@ import qrcode from 'qrcode-generator'
 import { setVolume } from './audio.ts'
 import { fmt, playSolo } from './game.ts'
 import { icon } from './icons.ts'
-import { playLaser } from './lasertag.ts'
+import { playLaser, shooterColor } from './lasertag.ts'
 import { connect, createRoom, type Net } from './net.ts'
-import { isReady, remaining, markerTaken as taken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
+import { isReady, REFS, remaining, SHARED_SIZE, markerTaken as taken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
 import type { Theme } from './targets.ts'
 import { THEMES } from './themes.ts'
 import { mode, startSensors } from './sensors.ts'
@@ -12,11 +12,11 @@ import { saveSettings, settings } from './settings.ts'
 import { app, esc, goFullscreen, on, render } from './ui.ts'
 
 const MODES = { ffa: 'Tutti contro tutti', squadre: 'Due squadre' }
-const GAMES = { laser: 'Laser tag', sfida: 'Sfida a bersagli' }
+const GAMES = { laser: 'Laser tag', sfida: 'Sfida a bersagli', condivisi: 'Bersagli condivisi' }
 const DIFFS = { facile: 'Facile', media: 'Media', difficile: 'Difficile' }
 // i numeri doppi contano solo nel laser tag, dove il marker è il bersaglio
 const markerTaken = (r: Room, p: Player) => r.config.game === 'laser' && taken(r, p)
-const summary = (c: Config) => `${GAMES[c.game]}: ${MODES[c.mode]}, ` + (c.game === 'sfida' ? `${THEMES[c.theme]}, ${DIFFS[c.diff]}, ` : '') + fmt(c.duration)
+const summary = (c: Config) => `${GAMES[c.game]}: ${MODES[c.mode]}, ` + (c.game !== 'laser' ? `${THEMES[c.theme]}, ${DIFFS[c.diff]}, ` : '') + fmt(c.duration)
 let back: () => void = () => {}
 
 // Crea partita: questo telefono diventa il regista.
@@ -113,7 +113,7 @@ function enter(code: string) {
     if (view === 'gioco' && r.phase === 'gioco') {
       if (!plays) return board(net)
       if (app.hidden) return
-      if (r.config.game === 'sfida' && mode() !== 'giroscopio' && mode() !== 'bussola') {
+      if (r.config.game !== 'laser' && mode() !== 'giroscopio' && mode() !== 'bussola') {
         view = 'fuori'
         alert('Questo telefono non sa quando ti giri, quindi non vede i bersagli intorno. Per lui arriverà la modalità Bersagli sui muri.')
         return show()
@@ -160,11 +160,27 @@ function playChallenge(net: Net, done: () => void) {
       return [0, 1].map((t) => ({ name: TEAMS[t].name.replace('Squadra ', ''), score: tot[t], me: t === mine })).sort((a, b) => b.score - a.score)
     },
     color: c.mode === 'squadre' ? TEAMS[r.players.find((p) => p.id === net.me)?.team ?? 0].color : undefined,
+    shared: c.game !== 'condivisi' ? undefined : {
+      ref: c.ref,
+      size: SHARED_SIZE,
+      me: net.me,
+      taken: () => net.room!.taken,
+      colorOf: (id) => shooterColor(net.room!, net.room!.players.find((p) => p.id === id)),
+      nameOf: (id) => net.room!.players.find((p) => p.id === id)?.name ?? '',
+      claim: (id) => net.send({ t: 'claim', id, at: net.serverNow() }),
+      score: () => net.room!.players.find((p) => p.id === net.me)?.score ?? 0,
+    },
   })
 }
 
 function rulesHtml(c: Config) {
   const ammo = c.diff !== 'facile'
+  if (c.game === 'condivisi') return rulesBox([
+    ['users', 'Prima del via', `Mettetevi vicini, puntate tutti ${c.ref} e premete il grilletto. Così i bersagli sono nello stesso posto per tutti.`],
+    ['target', 'Si spara', 'Gli stessi bersagli per tutti: chi lo colpisce prima lo prende, e il bersaglio sparisce anche per gli altri.'],
+    ['heart', 'Attenzione', c.theme === 'zombi' ? 'Gli zombi che arrivano vicino se ne vanno: colpiscili prima!' : 'Non colpire il gattino col cuore: toglie 2 punti.'],
+    ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra che prende più bersagli.' : 'Vince chi prende più punti. Se i bersagli scivolano, ricentra con il pulsante in alto.'],
+  ])
   if (c.game === 'sfida') return rulesBox([
     ['target', 'Si spara', 'I bersagli compaiono intorno a te: girati, mira e tocca il grilletto. Tutti hanno gli stessi bersagli.'],
     ['up', 'Si ricarica', ammo ? 'Hai 10 colpi. Per ricaricare alza il fucile verso il soffitto.' : 'In Facile i colpi sono infiniti.'],
@@ -192,7 +208,7 @@ function qrSvg(text: string) {
 
 function chips(p: Player, r: Room) {
   const c = (ok: boolean, label: string) => `<span class="mini ${ok ? 'ok' : ''}">${label}</span>`
-  const sens = r.config.game === 'sfida' ? c(p.ready.gyro, 'giroscopio') : c(p.ready.sens, 'sensori')
+  const sens = r.config.game !== 'laser' ? c(p.ready.gyro, 'giroscopio') : c(p.ready.sens, 'sensori')
   return `${c(p.ready.gun, 'fucile')}${sens}${c(p.ready.cam, 'fotocamera')}${c(p.ready.cal, 'mirino')}${markerTaken(r, p) ? '<span class="mini warn">numero doppio</span>' : ''}`
 }
 
@@ -214,7 +230,7 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
       <section>
         <div class="code-box">${isDir ? `<div class="qr">${qrSvg(link)}</div>` : ''}<div><small>Codice della partita</small><b>${r.code}</b>${isDir ? '<small>Gli altri toccano Entra in partita e scrivono il codice, oppure inquadrano il QR.</small>' : `<small>${summary(c)}</small>`}</div></div>
         ${isDir ? `
-          <h3>Gioco</h3>${seg('game', [['laser', GAMES.laser], ['sfida', GAMES.sfida]])}
+          <h3>Gioco</h3>${seg('game', [['laser', GAMES.laser], ['sfida', GAMES.sfida], ['condivisi', GAMES.condivisi]])}
           <h3>Come si gioca</h3>${seg('mode', [['ffa', MODES.ffa], ['squadre', MODES.squadre]])}
           ${c.game === 'laser' ? `
           <h3>Durata</h3>${seg('duration', [[120, '2 min'], [180, '3 min'], [300, '5 min']])}
@@ -222,7 +238,8 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
           <div><h3>Colpi</h3>${seg('ammo', [[10, '10, poi ricarica'], [0, 'Infiniti']])}</div></div>` : `
           <h3>Tema</h3>${seg('theme', (Object.keys(THEMES) as Theme[]).map((t) => [t, THEMES[t]]))}
           <div class="two"><div><h3>Difficoltà</h3>${seg('diff', Object.entries(DIFFS))}</div>
-          <div><h3>Durata</h3>${seg('duration', [[60, '1 min'], [90, '1½ min'], [120, '2 min']])}</div></div>`}
+          <div><h3>Durata</h3>${seg('duration', [[60, '1 min'], [90, '1½ min'], [120, '2 min']])}</div></div>
+          ${c.game === 'condivisi' ? `<h3>Cosa puntate tutti all'inizio</h3>${seg('ref', REFS.map((x) => [x, x[0].toUpperCase() + x.slice(1)]))}` : ''}`}
           <h3>Il regista</h3>${seg('plays', [[true, 'Gioco anche io'], [false, 'Faccio solo il regista']])}
           <label class="field">Volume per tutti <input type="range" min="0" max="1" step="0.1" value="${r.volume}" data-vol></label>`
         : rulesHtml(c)}
@@ -289,7 +306,7 @@ function inGame(r: Room, rejoin: () => void) {
 }
 
 function results(r: Room, s: Standing[], toLobby: () => void) {
-  const sfida = r.config.game === 'sfida'
+  const sfida = r.config.game !== 'laser'
   const teams = r.config.mode === 'squadre' ? teamScores(s) : null
   const win = teams ? (teams[0] === teams[1] ? -1 : teams[0] > teams[1] ? 0 : 1) : -1
   render(`
@@ -331,7 +348,7 @@ function updateBoard(net: Net) {
   const b = app.querySelector('[data-bpause]')!
   b.innerHTML = r.pausedAt ? `${icon('play', 30)}Riprendi` : `${icon('pause', 30)}Pausa per tutti`
   const ps = [...participants(r)].sort((a, b) => b.score - a.score)
-  const sfida = r.config.game === 'sfida'
+  const sfida = r.config.game !== 'laser'
   const teams = r.config.mode === 'squadre' ? teamScores(ps.map((p) => ({ ...p, acc: 0, best: p.best }))) : null
   box.innerHTML = `${teams ? `<div class="teams-score">${[0, 1].map((t) => `<div class="ts t${t}"><small>${TEAMS[t].name}</small><b>${teams[t]}</b></div>`).join('')}</div>` : ''}
     <ul class="players">${ps.map((p) => {

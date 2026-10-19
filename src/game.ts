@@ -24,6 +24,17 @@ export type Multi = {
   report: (s: { score: number; shots: number; good: number; best: number }) => void
   board: () => { name: string; score: number; me: boolean }[]
   color?: string // a squadre: il colore della squadra
+  // Bersagli condivisi: tutti li vedono nella stessa direzione e il primo che colpisce li prende
+  shared?: {
+    ref: string // cosa puntare per la direzione zero comune, per esempio "la TV"
+    size: number
+    taken: () => Record<string, string>
+    colorOf: (playerId: string) => string
+    nameOf: (playerId: string) => string
+    me: string
+    claim: (id: number) => void
+    score: () => number
+  }
 }
 
 const AMMO = 10
@@ -33,7 +44,8 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void, multi?: Multi) {
   const training = opts.duration === 0 && !multi
-  const sizeMul = mode() === 'bussola' ? 1.5 : 1 // la bussola trema: bersagli più grandi
+  const shared = multi?.shared
+  const sizeMul = (mode() === 'bussola' ? 1.5 : 1) * (shared?.size ?? 1) // la bussola trema: bersagli più grandi
   const useAmmo = DIFF[opts.diff].ammo && !training
   const zombi = opts.theme === 'zombi'
   const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
@@ -42,7 +54,9 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   const H = settings.gunH // altezza degli occhi sul pavimento virtuale
   let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
 
-  let phase: 'mira' | 'via' | 'gioco' | 'fine' = multi ? 'via' : 'mira' // nella Sfida la direzione zero si prende al via
+  // nella Sfida la direzione zero si prende al via, nei condivisi puntando tutti lo stesso riferimento
+  let phase: 'mira' | 'via' | 'gioco' | 'fine' = multi && !shared ? 'via' : 'mira'
+  const aimText = shared ? `Tutti insieme: puntate ${shared.ref} e premete il grilletto` : 'Punta davanti a te e premi il grilletto'
   let paused = false
   let recenter = false
   let gameT = 0
@@ -89,7 +103,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (a === 'ricentra' && phase === 'gioco') {
       recenter = true
       if (!multi) setPaused(false)
-      say('Punta davanti a te e premi il grilletto')
+      say(shared ? `Punta ${shared.ref} e premi il grilletto` : aimText)
     }
   })
 
@@ -116,7 +130,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
   }
   if ((phase as string) === 'fine') return // uscita durante il caricamento (finish la cambia)
-  say(multi ? 'Al via punta il fucile davanti a te' : 'Punta il fucile davanti a te e premi il grilletto')
+  say(shared ? aimText : multi ? 'Al via punta il fucile davanti a te' : 'Punta il fucile davanti a te e premi il grilletto')
   raf = requestAnimationFrame(frame)
 
   function alive(t: Target) {
@@ -139,6 +153,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       yaw0 = sensors.yaw
       phase = 'via'
       viaAt = now
+      if (shared) {
+        play('beep')
+        say('Fatto! Aspetta il via', 0)
+      }
       return
     }
     if (recenter) {
@@ -170,6 +188,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     t.hitAt = gameT
     const pts = POINTS[t.kind]
     navigator.vibrate?.(30)
+    shared?.claim(t.id) // i punti li assegna il server al primo che arriva
     if (t.kind === 'amico') {
       score = Math.max(0, score + pts)
       streak = 0
@@ -225,6 +244,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     const clock = multi?.clock()
     if (clock && clock.paused !== paused) setPaused(clock.paused)
     if (multi?.ended()) return finish(false)
+    if (phase === 'mira' && shared && clock && clock.t >= 0) {
+      yaw0 = sensors.yaw // nessuno ha premuto: vale dove punta adesso, si può ricentrare
+      phase = 'via'
+    }
     if (phase === 'via') {
       const left = clock ? -clock.t : 3 - (now - viaAt) / 1000
       const n = Math.ceil(left)
@@ -234,7 +257,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
         say(String(n), 0, 'huge')
       }
       if (left <= 0) {
-        if (multi) yaw0 = sensors.yaw
+        if (multi && !shared) yaw0 = sensors.yaw
         phase = 'gioco'
         play('go')
         say('Via!', 700, 'huge')
@@ -252,12 +275,30 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       }
     }
 
-    // uno zombi arrivato vicino ti fa il solletico: un punto in meno
+    // bersagli presi da altri: spariscono anche qui, con lo scoppio nel colore di chi li ha presi
+    if (shared && phase === 'gioco') {
+      const taken = shared.taken()
+      for (const t of targets) {
+        const by = taken[t.id]
+        if (!by || by === shared.me || t.hitAt !== undefined) continue
+        const p = project(sensors.q, geo(t).dir, view())
+        if (p && p.x > 0 && p.x < size.w && p.y > 0 && p.y < size.h) {
+          burstFx(p.x, p.y, [shared.colorOf(by), '#ffffff'])
+          textFx(p.x, p.y, shared.nameOf(by), shared.colorOf(by))
+        }
+        t.hitAt = gameT
+        t.caught = true // niente animazione del colpo
+      }
+      score = shared.score()
+    }
+
+    // uno zombi arrivato vicino ti fa il solletico: un punto in meno (nei condivisi se ne va e basta)
     if (zombi && phase === 'gioco') {
       for (const t of targets) {
         if (t.hitAt !== undefined || gameT < t.born + t.life) continue
         t.hitAt = gameT
         t.caught = true
+        if (shared) continue
         score = Math.max(0, score - 1)
         streak = 0
         play('oops')

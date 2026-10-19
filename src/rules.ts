@@ -1,4 +1,4 @@
-import type { Diff, Theme } from './targets.ts'
+import { POINTS, schedule, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
 
 // Regole del laser tag e tipi della stanza, usati sia dal server (Durable Object) sia dai telefoni.
 // Tutti i tempi sono in millisecondi dell'orologio del server.
@@ -25,7 +25,7 @@ export type Player = {
   shots: number
   best: number // serie migliore, nella Sfida a bersagli
 }
-export type Game = 'laser' | 'sfida'
+export type Game = 'laser' | 'sfida' | 'condivisi'
 export type Config = {
   game: Game
   mode: 'ffa' | 'squadre'
@@ -33,8 +33,9 @@ export type Config = {
   life: number
   ammo: number // 0 = infinite
   plays: boolean
-  theme: Theme // Sfida a bersagli
+  theme: Theme // giochi a bersagli
   diff: Diff
+  ref: string // Bersagli condivisi: il punto della stanza che tutti puntano all'inizio
 }
 export type Standing = { id: string; name: string; color: string; team: Team; score: number; hits: number; elims: number; outs: number; acc: number; best: number }
 export type Room = {
@@ -49,7 +50,8 @@ export type Room = {
   restUntil: number // pausa obbligatoria tra un round e l'altro
   volume: number
   results: Standing[] | null
-  seed: number // sequenza dei bersagli della Sfida, uguale per tutti
+  seed: number // sequenza dei bersagli, uguale per tutti
+  taken: Record<string, string> // Bersagli condivisi: id del bersaglio, id di chi l'ha preso
 }
 export type Ev = { k: 'hit'; by: string; to: string; out: boolean } | { k: 'fine' }
 
@@ -68,6 +70,7 @@ export type ClientMsg =
   | { t: 'shot'; marker: number | null }
   | { t: 'reload' }
   | { t: 'score'; score: number; shots: number; good: number; best: number }
+  | { t: 'claim'; id: number; at: number }
 // Messaggi dal server al telefono.
 export type ServerMsg =
   | { t: 'state'; room: Room; you: string; ev?: Ev }
@@ -84,14 +87,17 @@ export const TEAMS = [
   { name: 'Squadra Arancio', color: '#ff9f1c' },
   { name: 'Squadra Blu', color: '#3d8bfd' },
 ]
-export const DEFAULT_CONFIG: Config = { game: 'laser', mode: 'ffa', duration: 180, life: 5, ammo: 10, plays: true, theme: 'palloncini', diff: 'facile' }
-export const DURATIONS: Record<Game, number[]> = { laser: [120, 180, 300], sfida: [60, 90, 120] }
+export const DEFAULT_CONFIG: Config = { game: 'laser', mode: 'ffa', duration: 180, life: 5, ammo: 10, plays: true, theme: 'palloncini', diff: 'facile', ref: 'la TV' }
+export const DURATIONS: Record<Game, number[]> = { laser: [120, 180, 300], sfida: [60, 90, 120], condivisi: [60, 90, 120] }
+export const REFS = ['la TV', 'la porta', 'la finestra', 'il divano']
+export const CALIBRATE_MS = 12_000 // Bersagli condivisi: tempo per puntare tutti insieme il riferimento
+export const SHARED_SIZE = 1.5 // bersagli più grandi: i giocatori sono in punti diversi della stanza
 
 export const endAt = (r: Room) => r.startAt + r.config.duration * 1000 + r.pausedMs
 // Tempo che resta, fermo durante la pausa.
 export const remaining = (r: Room, now: number) => Math.max(0, Math.min(r.config.duration * 1000, endAt(r) - Math.max(r.startAt, r.pausedAt || now)))
 export const participants = (r: Room) => r.players.filter((p) => r.config.plays || p.id !== r.dirId)
-export const isReady = (p: Player, c: Config) => p.ready.cam && (c.game === 'sfida' ? p.ready.gyro : p.ready.sens) && p.ready.cal && p.ready.gun
+export const isReady = (p: Player, c: Config) => p.ready.cam && (c.game !== 'laser' ? p.ready.gyro : p.ready.sens) && p.ready.cal && p.ready.gun
 export const markerTaken = (r: Room, p: Player) => participants(r).some((o) => o !== p && o.marker === p.marker)
 export const running = (r: Room, now: number) => r.phase === 'gioco' && !r.pausedAt && now >= r.startAt && now < endAt(r)
 
@@ -148,4 +154,21 @@ export function standings(r: Room): Standing[] {
 
 export function teamScores(s: Standing[]): [number, number] {
   return [0, 1].map((t) => s.filter((p) => p.team === t).reduce((n, p) => n + p.score, 0)) as [number, number]
+}
+
+// Bersagli condivisi: la stessa sequenza che generano i telefoni, calcolata anche dal server.
+export const sharedTargets = (r: Room): Target[] =>
+  (r.config.theme === 'zombi' ? zombieSchedule : schedule)(r.seed, r.config.diff, r.config.duration, SHARED_SIZE)
+
+// Il primo che arriva prende il bersaglio, se in quel momento era ancora in gioco. Restituisce i punti, o null.
+export function claim(r: Room, p: Player, list: Target[], id: number, at: number): number | null {
+  const t = list[id]
+  if (!t || r.config.game !== 'condivisi' || r.taken[id] || !running(r, at)) return null
+  const el = (r.config.duration * 1000 - remaining(r, at)) / 1000
+  if (el < t.born - 0.3 || el > t.born + t.life + 0.3) return null // un po' di margine per orologi e rete
+  r.taken[id] = p.id
+  const pts = POINTS[t.kind]
+  p.score = Math.max(0, p.score + pts)
+  if (pts > 0) p.hits++
+  return pts
 }
