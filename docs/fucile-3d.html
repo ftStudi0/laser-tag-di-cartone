@@ -116,7 +116,7 @@ aside { display: grid; gap: 12px; min-width: 0; }
         <span class="tag" id="info-pdf"></span>
       </div>
       <ul class="parts" id="parts"></ul>
-      <p class="note">Misure in millimetri come nel PDF dei template. Dimensioni dei telefoni da scheda tecnica, con una cover stimata di 1,2 mm per lato. La posizione dei moduli fotocamera è indicativa: prima di incollare gli spessori, appoggia il telefono e controlla.</p>
+      <p class="note">Misure in millimetri come nel PDF dei template. Dimensioni dei telefoni da scheda tecnica, con una cover stimata di 1,2 mm per lato. La scatola è universale: la spugna assorbe le differenze tra telefoni, e le finestre dello schienale lasciano libera la fotocamera.</p>
     </aside>
   </div>
 </div>
@@ -148,12 +148,13 @@ const PARTS = {
   leva:      { name: 'Leva del grilletto', q: '2 strati sottili', pdf: 'PDF pagina 4', col: '#d9a46a', desc: "Ruota sul perno. Quando tiri il grilletto, la punta va in avanti e il tampone tocca lo schermo. L'elastico, nascosto nel vano, riporta il grilletto in avanti." },
   alluminio: { name: 'Striscia di alluminio', q: '1', pdf: 'Materiale', col: '#c9ced4', desc: "Va dal punto dove appoggi il dito fino al tampone. Porta il tocco del dito allo schermo: per questo il dito deve toccare il metallo, non il cartone." },
   tampone:   { name: 'Tampone di spugna', q: '1', pdf: 'Materiale', col: '#e8e2b0', desc: "Un centimetro di spugna morbida avvolta nell'alluminio, senza bordi vivi. Tocca lo schermo al centro del bordo basso, tra i due labbri." },
-  mensola:   { name: 'Mensola', q: '1', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Il ripiano su cui appoggia il telefono, incollato sopra il fianco. La tacca al centro lascia passare la punta della leva." },
-  labbri:    { name: 'Labbri', q: '2', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Due listelli davanti al bordo basso del telefono. Lo tengono fermo ai lati e lasciano libero il centro, dove arriva il tampone." },
-  piastra:   { name: 'Piastra', q: '1', pdf: 'PDF pagina 4', col: '#b98c58', desc: "La parete dietro il telefono. È larga solo 60 mm e sta al centro, così le due estremità restano libere e la fotocamera vede da qualsiasi lato monti il telefono." },
-  spessori:  { name: 'Spessori', q: '1 o 2', pdf: 'PDF pagina 4', col: '#d8b98f', desc: "Quadrati di 40 mm incollati sulla piastra finché il telefono resta stretto senza forzare. Sono stretti apposta: così non toccano il modulo della fotocamera. Quanti ne servono dipende dal telefono." },
-  gancio:    { name: 'Cappuccio', q: '3 pezzi', pdf: 'PDF pagina 4', col: '#9f7a4e', desc: "Tre rettangoli incollati a caldo ad angolo retto, senza pieghe: il ponte sopra il telefono, il labbro alto davanti al bordo dello schermo e la gamba dietro la piastra. Due elastici dalle tacche della gamba a uno spiedino corto nella squadretta lo tengono giù." },
-  squadrette:{ name: 'Squadrette', q: '3', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Triangoli di rinforzo: una tiene dritta la piastra, due sostengono la mensola ai lati del fianco." },
+  guance:    { name: 'Guance', q: '2 + 2 spiedini', pdf: 'PDF pagina 4', col: '#e0a86a', desc: "Due rettangoli 52 x 48 mm incollati di piatto sui lati del fianco, sotto la scatola. Due spiedini li attraversano insieme al fianco: anche se la colla cede, non si staccano. Reggono il peso del telefono invece del bordo stretto del fianco." },
+  scatola:   { name: 'Scatola', q: '4 pezzi', pdf: 'PDF pagina 5', col: '#b98c58', desc: "Fondo, schienale e due testate. Misure interne 178 x 84 x 18 mm: ci sta il telefono più grande, gli altri li tiene la spugna. Lo schienale ha due finestre alle estremità, così la fotocamera vede da qualsiasi lato." },
+  labbri:    { name: 'Labbri bassi', q: '2', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Davanti al bordo basso dello schermo, ai lati. Il centro resta libero per il tampone del grilletto." },
+  coperchio: { name: 'Coperchio', q: '1 + labbro alto', pdf: 'PDF pagina 5', col: '#9f7a4e', desc: "Si apre all'indietro con una cerniera di nastro sullo schienale. Il telefono entra dall'alto, poi il coperchio si chiude e il labbro alto scende davanti al bordo dello schermo." },
+  spugna:    { name: 'Spugna', q: '2 strisce', pdf: 'Materiale', col: '#f1df73', desc: "Una sullo schienale e una sotto il coperchio. Si schiacciano quanto serve: così la stessa scatola tiene telefoni di spessore e altezza diversi." },
+  elastici:  { name: 'Elastici grandi', q: '2', pdf: 'Materiale', col: '#d4574a', desc: "Due elastici da ufficio grandi attorno alle estremità della scatola tengono chiuso il coperchio." },
+  squadrette:{ name: 'Squadrette', q: '3', pdf: 'PDF pagina 4', col: '#b98c58', desc: "Due sotto il fondo, tra fondo e guance, una dietro lo schienale sopra la canna. Tengono la scatola dritta." },
   perno:     { name: 'Perno', q: '1 spiedino', pdf: 'Materiale', col: '#e2c79a', desc: "Uno spiedino di legno che attraversa i tre strati e la leva. Si taglia a filo dopo averlo infilato." },
   ritorno:   { name: 'Stecchino ed elastico', q: '1 + 1', pdf: 'Materiale', col: '#d4574a', desc: "Lo stecchino attraversa solo i due strati esterni e passa dentro il vano della leva, dietro di lei. L'elastico va dalla tacca sul bordo posteriore della leva, sopra il perno, allo stecchino: resta nascosto nel fianco e riporta il grilletto in avanti." },
   laccetto:  { name: 'Laccetto da polso', q: '1', pdf: 'Materiale', col: '#3c8a8a', desc: "Un cordino nel foro dell'impugnatura, da mettere al polso. Se il fucile scivola di mano, il telefono non cade." },
@@ -310,38 +311,49 @@ mover(leverPivot, [0, 0, 0]);
   addMesh('tampone', pad, foil.clone(), leverPivot, undefined, false);
 }
 
-// mensola, labbri, piastra, spessori
-addMesh('mensola', boxGeo(124, 144, 160, 164, -90, 90), kraft(0xc29361), gun, [0, 35, 0]);
-addMesh('labbri', boxGeo(124, 128, 164, 174, -80, -20), kraft(0xb5864f), gun, [-30, 70, -10]);
-addMesh('labbri', boxGeo(124, 128, 164, 174, 20, 80), kraft(0xb5864f), gun, [-30, 70, 10]);
-addMesh('piastra', boxGeo(144, 148, 164, 236, -30, 30), kraft(0xc6965f), gun, [55, 60, 0]);
+// guance, scatola, coperchio
 const spessoriGroup = new THREE.Group();
 gun.add(spessoriGroup);
-mover(spessoriGroup, [35, 95, 0]);
+mover(spessoriGroup, [0, 95, 0]);
 const gancioGroup = new THREE.Group();
-
+const woodMat = new THREE.MeshStandardMaterial({ color: 0xe0c08f, roughness: 0.8 });
+for (const side of [1, -1]) {
+  addMesh('guance', boxGeo(134, 186, 112, 160, side > 0 ? 7 : -11, side > 0 ? 11 : -7), kraft(0xe0a86a), gun, [0, -10, side * 40]);
+}
+for (const [xx, yy] of [[150, 124], [172, 146]]) {
+  const sk = new THREE.CylinderGeometry(1.5, 1.5, 28, 16); sk.rotateX(Math.PI / 2);
+  const m = addMesh('guance', sk, woodMat, gun, [0, -10, 70], false); m.position.set(xx, yy, 0); m.userData.base = m.position.clone();
+}
+{
+  const fondo = extrude(shape([[-93, 124], [-10, 124], [-10, 132], [10, 132], [10, 124], [93, 124], [93, 150], [-93, 150]]), 4);
+  fondo.applyMatrix4(new THREE.Matrix4().set(0, 1, 0, 0, 0, 0, 1, 160, 1, 0, 0, 0, 0, 0, 0, 1));
+  addMesh('scatola', fondo, kraft(0xc29361), gun, [0, 30, 0]);
+}
+{
+  const sh = shape([[-93, 164], [93, 164], [93, 252], [-93, 252]], [poly([[29, 170], [89, 170], [89, 246], [29, 246]]), poly([[-89, 170], [-29, 170], [-29, 246], [-89, 246]])]);
+  const g = extrude(sh, 4);
+  g.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 146, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1));
+  addMesh('scatola', g, kraft(0xc6965f), gun, [55, 50, 0]);
+}
+addMesh('scatola', boxGeo(128, 146, 164, 248, 89, 93), kraft(0xbb8d57), gun, [0, 50, 40]);
+addMesh('scatola', boxGeo(128, 146, 164, 248, -93, -89), kraft(0xbb8d57), gun, [0, 50, -40]);
+addMesh('labbri', boxGeo(124, 128, 164, 174, -89, -20), kraft(0xb5864f), gun, [-30, 60, 0]);
+addMesh('labbri', boxGeo(124, 128, 164, 174, 20, 89), kraft(0xb5864f), gun, [-30, 60, 0]);
+{
+  const g = gancioGroup; gun.add(g); mover(g, [0, 230, 0]);
+  addMesh('coperchio', boxGeo(124, 150, 248, 252, -93, 93), kraft(0xa98053), g);
+  addMesh('coperchio', boxGeo(124, 128, 238, 248, -93, 93), kraft(0xa98053), g);
+}
 // squadrette
 {
-  const tri = extrude(shape([[148, 164], [188, 160], [148, 212]]), 4);
+  const tri = extrude(shape([[150, 160], [190, 160], [150, 212]]), 4);
   tri.translate(0, 0, -2);
   addMesh('squadrette', tri, kraft(0xbf905a), gun, [80, 40, 0]);
   for (const side of [1, -1]) {
-    const t = extrude(shape([[0, 0], [40, 0], [0, -20]]), 4);
-    t.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 130, 0, 1, 0, 160, side, 0, 0, side * 7, 0, 0, 0, 1));
-    addMesh('squadrette', t, kraft(0xbf905a), gun, [0, 15, side * 45]);
+    const t = extrude(shape([[0, 0], [40, 0], [0, -32]]), 4);
+    t.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, 138, 0, 1, 0, 160, side, 0, 0, side * 11, 0, 0, 0, 1));
+    addMesh('squadrette', t, kraft(0xbf905a), gun, [0, 10, side * 55]);
   }
-}
-
-// gancio
-{
-  const mat = kraft(0xa98053);
-  const g = gancioGroup; gun.add(g); mover(g, [0, 240, 0]);
-  addMesh('gancio', boxGeo(123, 127, 226, 240, -25, 25), mat, g);   // labbro alto
-  addMesh('gancio', boxGeo(127, 148, 236, 240, -25, 25), mat, g);   // ponte
-  addMesh('gancio', boxGeo(148, 152, 212, 240, -25, 25), mat, g);   // gamba
-  const sk = new THREE.CylinderGeometry(1.5, 1.5, 60, 16); sk.rotateX(Math.PI / 2);
-  const skm = addMesh('gancio', sk, new THREE.MeshStandardMaterial({ color: 0xe0c08f, roughness: 0.8 }), gun, [80, 40, 0], false);
-  skm.position.set(153, 195, 0); skm.userData.base = skm.position.clone();
 }
 
 // perno, stecchino
@@ -356,8 +368,12 @@ const wood = new THREE.MeshStandardMaterial({ color: 0xe0c08f, roughness: 0.8 })
 // elastici
 const rubber = new THREE.MeshStandardMaterial({ color: 0xd4574a, roughness: 0.6 });
 const elasticRet = addMesh('ritorno', new THREE.CylinderGeometry(0.9, 0.9, 1, 8), rubber, gun, [0, 0, 0], false);
-const elasticHook = addMesh('gancio', new THREE.CylinderGeometry(0.9, 0.9, 1, 8), rubber.clone(), gun, [0, 0, 0], false);
-const elasticHook2 = addMesh('gancio', new THREE.CylinderGeometry(0.9, 0.9, 1, 8), rubber.clone(), gun, [0, 0, 0], false);
+function bandGeo(z) {
+  const pts = [[122.5, 158.5], [151.5, 158.5], [151.5, 253.5], [122.5, 253.5]].map(([x, y]) => new THREE.Vector3(x, y, z));
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.02), 80, 1.2, 8, true);
+}
+const elasticHook = addMesh('elastici', bandGeo(85), rubber.clone(), gun, [0, 0, 0], false);
+const elasticHook2 = addMesh('elastici', bandGeo(-85), rubber.clone(), gun, [0, 0, 0], false);
 const UP = new THREE.Vector3(0, 1, 0);
 function stretch(mesh, a, b) {
   const d = new THREE.Vector3().subVectors(b, a);
@@ -426,26 +442,17 @@ function applyPhone(id) {
     l.translate(back + c.p + 0.8, top - dy, zEnd + dz);
     addMesh('telefono', l, lensMat, phone, undefined, false);
   }
-  // spessori: riempiono lo spazio tra il retro del telefono e la piastra (x 144), cartone da 3 mm
+  // spugna: schienale (dietro il telefono) e coperchio (sopra il telefono)
   clearGroup(spessoriGroup);
-  const gap = 144 - back, n = Math.max(0, Math.round(gap / 3)), th = n ? gap / n : 0;
-  for (let i = 0; i < n; i++) {
-    addMesh('spessori', boxGeo(back + i * th, back + (i + 1) * th, 182, 222, -20, 20), kraft(i % 2 ? 0xd6b483 : 0xe0c194), spessoriGroup);
-  }
-  // il gancio segue l'altezza del telefono
-  const dy = top - 236;
-  gancioGroup.userData.base.set(0, dy, 0);
-  stretch(elasticHook, new THREE.Vector3(150, 213 + dy, 17), new THREE.Vector3(153, 195, 17));
-  stretch(elasticHook2, new THREE.Vector3(150, 213 + dy, -17), new THREE.Vector3(153, 195, -17));
-  elasticHook.userData.base = elasticHook.position.clone();
-  elasticHook2.userData.base = elasticHook2.position.clone();
-  // verifica
-  const camMargin = (L / 2 - c.z1) - 20;
+  const foam = new THREE.MeshStandardMaterial({ color: 0xf1df73, roughness: 1 });
+  if (146 - back > 0.5) addMesh('spugna', boxGeo(back, 146, 186, 232, -27, 27), foam, spessoriGroup, undefined, false);
+  if (248 - top > 0.5) addMesh('spugna', boxGeo(128, 146, top, 248, -75, 75), foam.clone(), spessoriGroup, undefined, false);
+  const lensIn = L / 2 - Math.max(...c.lenses.map(([dz, dy, r]) => dz + r));
   const checks = [
-    ['Lunghezza', `${fmt(L)} mm su 180`, L <= 180],
-    ['Altezza', `${fmt(H)} mm su 82`, H <= 82],
-    ['Spessore', `${fmt(T)} mm, ${n} ${n === 1 ? 'spessore' : 'spessori'} da 3 mm`, gap >= 0],
-    ['Fotocamera', camMargin >= 3 ? `libera, ${fmt(camMargin)} mm dagli spessori` : `tocca gli spessori`, camMargin >= 3],
+    ['Lunghezza', `${fmt(L)} mm su 178`, L <= 178],
+    ['Altezza', `${fmt(H)} mm su 84`, H <= 84],
+    ['Spessore', `${fmt(T)} mm su 18, spugna ${fmt(Math.max(0, 18 - T))} mm`, T <= 16],
+    ['Fotocamera', lensIn >= 29 ? `nella finestra, ${fmt(lensIn - 29)} mm di margine` : `coperta dallo schienale`, lensIn >= 29],
     ['Sensori', s.sensors, s.gyro === true ? true : s.gyro === 'bussola' ? 'mid' : false],
   ];
   document.getElementById('fit').innerHTML = checks.map(([k, v, ok]) =>

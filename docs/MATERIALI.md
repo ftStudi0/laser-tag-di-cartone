@@ -10,7 +10,8 @@
 
 - Nastro di rame adesivo (almeno 10 mm di larghezza) oppure alluminio da cucina.
 - Spugna da cucina, solo la parte morbida.
-- Spiedini di legno (perno), stecchini, elastici piccoli (2 a fucile più ricambi).
+- Spiedini di legno (perno e 2 per le guance), stecchini, elastici piccoli per capelli in silicone (1 a fucile più ricambi), 2 elastici da ufficio grandi (diametro 60-80 mm) a fucile.
+- Spugna morbida spessa circa 1 cm: due strisce a fucile (55 x 50 e 150 x 10 mm).
 
 ## Colla e nastro
 
@@ -20,7 +21,7 @@
 ## Sicurezza
 
 - Laccetto da polso, legato nel foro dell'impugnatura.
-- Cover su tutti i telefoni. Per il Redmi A5 una cover sottile.
+- Cover su tutti i telefoni. La scatola tiene telefoni fino a 175 x 82 x 13 mm con la cover.
 
 ## Per indossare i marker
 
