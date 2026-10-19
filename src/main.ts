@@ -96,7 +96,7 @@ function soloSetup() {
     <div class="two"><div>
     <h3>Difficoltà</h3>
     <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((d) => `<button class="${d === settings.diff ? 'on' : ''}" data-diff="${d}">${DIFFS[d]}</button>`).join('')}</div>
-    <p class="note">In Facile i colpi sono infiniti. In Media e Difficile ne hai 10: per ricaricare alza il fucile verso il soffitto.</p>
+    <p class="note">In Facile i colpi sono infiniti. In Media e Difficile ne hai 10: per ricaricare alza il fucile verso il soffitto o tieni premuto il grilletto 5 secondi.</p>
     </div><div>
     <h3>Durata</h3>
     <div class="seg">${DURATIONS.map(([s, l]) => `<button class="${s === settings.duration ? 'on' : ''}" data-dur="${s}">${l}</button>`).join('')}</div>

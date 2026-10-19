@@ -16,6 +16,8 @@ export const sensors = {
 }
 
 let absolute = false
+let orientAt = 0 // ultimo evento di orientamento con l'inclinazione
+let gz = 0 // gravità filtrata lungo l'asse della fotocamera
 let shakes: number[] = []
 
 export function screenAngle(): number {
@@ -33,6 +35,7 @@ export function mode(): Mode {
 function onOrient(e: DeviceOrientationEvent, isAbs: boolean) {
   if (!isAbs && absolute) return
   if (e.beta == null || e.gamma == null) return
+  orientAt = performance.now()
   if (e.alpha != null) {
     sensors.hasAlpha = true
     if (isAbs) absolute = true
@@ -53,6 +56,12 @@ function onMotion(e: DeviceMotionEvent) {
   const g = e.accelerationIncludingGravity
   const mag = a?.x != null ? Math.hypot(a.x, a.y ?? 0, a.z ?? 0) : g?.x != null ? Math.abs(Math.hypot(g.x, g.y ?? 0, g.z ?? 0) - 9.81) : 0
   const now = performance.now()
+  // senza eventi di orientamento (Galaxy A02s) l'inclinazione si ricava dalla gravità: basta per la ricarica
+  if (g?.z != null && now - orientAt > 500) {
+    const n = Math.hypot(g.x ?? 0, g.y ?? 0, g.z) || 1
+    gz += (g.z / n - gz) * 0.2
+    sensors.pitch = Math.asin(Math.max(-1, Math.min(1, -gz))) // la fotocamera guarda dal retro del telefono
+  }
   if (mag > 14 && now - (shakes.at(-1) ?? 0) > 200) {
     shakes = [...shakes.filter((t) => now - t < 3000), now]
     if (shakes.length >= 4) {

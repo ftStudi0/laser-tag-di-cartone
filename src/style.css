@@ -1051,6 +1051,32 @@ input[type='checkbox'] {
 .lt-life [data-life] i.off {
   color: #d8d2e0;
 }
+/* fuori gioco: il velo chiaro si abbassa man mano che passano gli 8 secondi */
+.lt-out {
+  background: rgba(255, 244, 228, 0.3);
+  overflow: hidden;
+}
+.lt-out > :not(.drain) {
+  position: relative;
+}
+.lt-out .drain {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--left, 1) * 100%);
+  background: rgba(255, 244, 228, 0.9);
+  border-top: 6px solid #ff6fb5;
+}
+.out-hearts {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+  color: #ff6fb5;
+}
+.out-hearts i.off {
+  color: #d8d2e0;
+}
 .hud-flash {
   position: absolute;
   inset: 0;

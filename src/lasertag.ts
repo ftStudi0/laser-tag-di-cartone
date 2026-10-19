@@ -4,15 +4,14 @@ import { icon } from './icons.ts'
 import { D } from './math.ts'
 import { createDetector, drawMarker, markerUnder, type Detector, type Marker } from './markers.ts'
 import type { Net } from './net.ts'
-import { COUNTDOWN_MS, endAt, participants, practice, remaining, RATE_MS, status, TEAMS, type Ev, type Player, type Room } from './rules.ts'
+import { COUNTDOWN_MS, endAt, OUT_MS, participants, practice, remaining, RATE_MS, status, TEAMS, type Ev, type Player, type Room } from './rules.ts'
 import { mode, sensors } from './sensors.ts'
 import { settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, video,
 } from './stage.ts'
-import { onTrigger } from './trigger.ts'
+import { onTrigger, RELOAD_PITCH, reloader } from './trigger.ts'
 
-const RELOAD_PITCH = 60 * D
 
 // Il colore di chi spara: quello della squadra, oppure il suo. Mai rosso per chi viene colpito: giallo brillante.
 export const shooterColor = (r: Room, p: Player | undefined) =>
@@ -25,7 +24,6 @@ export async function playLaser(net: Net, onEnd: () => void) {
   const color = () => shooterColor(room, me())
   let ammo = room.config.ammo
   let lastShot = -1e9
-  let upSince = 0
   let lastCount = 0
   let wasOut = false
   let flashT = 0
@@ -46,7 +44,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     <div class="hud-mr pill"><b data-time></b><small data-shield hidden>${icon('shield', 14)} scudo</small></div>
     <div class="hud-flash" data-flash></div>
     <div class="hud-msg" hidden></div>
-    <div class="hud-full" data-out hidden>Fuori gioco<small data-outt></small></div>
+    <div class="hud-full lt-out" data-out hidden><span class="drain" data-drain></span>Fuori gioco<span class="out-hearts" data-outh></span><small data-outt></small></div>
     <div class="hud-full" data-pause hidden>Pausa
       ${isDir() ? `<small>Tocca ${icon('play', 18)} in alto a destra per riprendere</small><button class="btn primary lt-stop" data-a="fine">${icon('stop', 20)}Termina la partita</button>` : '<small>Aspetta il regista</small>'}
     </div>
@@ -62,6 +60,13 @@ export async function playLaser(net: Net, onEnd: () => void) {
     if (a === 'fine' && confirm('Terminare la partita per tutti?')) net.send({ t: 'stop' })
   }
 
+  const reload = reloader(
+    () => ammo >= room.config.ammo,
+    () => {
+      ammo = room.config.ammo
+      net.send({ t: 'reload' })
+    },
+  )
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
   sensors.onShake = () => say('Piano! Si cammina', 2000, 'warn')
   const prevState = net.onState
@@ -102,6 +107,14 @@ export async function playLaser(net: Net, onEnd: () => void) {
     }
   }
 
+  // Fogli di prova: i cuori si contano solo su questo telefono, come per un avversario vero.
+  const sheets: Record<number, { life: number; outUntil: number }> = {}
+  function sheet(n: number) {
+    const s = (sheets[n] ??= { life: room.config.life, outUntil: 0 })
+    if (s.life <= 0 && performance.now() >= s.outUntil) s.life = room.config.life
+    return s
+  }
+
   // Il marker sotto il mirino è un avversario che si può colpire adesso?
   function target(ms: Marker[], x: number, y: number, now: number) {
     const m = markerUnder(ms, x, y)
@@ -109,7 +122,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     const self = me()
     const p = participants(room).find((p) => p.marker === m.num && p.id !== net.me)
     if (!self) return null
-    if (!p) return practice(room, self, m.num) ? { m, p: null } : null
+    if (!p) return practice(room, self, m.num) && sheet(m.num).life > 0 ? { m, p: null } : null
     if (room.config.mode === 'squadre' && p.team === self.team) return null
     if (status(p, now) !== 'in gioco') return null
     return { m, p }
@@ -125,7 +138,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     if (sensors.pitch > RELOAD_PITCH) return // durante la ricarica non si spara
     if (room.config.ammo && ammo <= 0) {
       play('click')
-      say('Ricarica! Alza il fucile', 1500, 'warn')
+      say('Ricarica! Alza il fucile o tieni premuto', 1500, 'warn')
       return
     }
     lastShot = now
@@ -138,13 +151,21 @@ export async function playLaser(net: Net, onEnd: () => void) {
     const ms = await det.fresh()
     const hit = target(ms, ax, ay, net.serverNow())
     const under = markerUnder(ms, ax, ay)
-    net.send({ t: 'shot', marker: under?.num ?? null })
+    const out = !hit && under && practice(room, self, under.num) // foglio di prova fuori gioco: niente punto
+    net.send({ t: 'shot', marker: out ? null : under?.num ?? null })
     if (!hit) {
       // marker visto ma non colpibile: si dice perché, così si capisce che il riconoscimento funziona
       if (under) say(why(under.num, net.serverNow()), 1400, 'warn')
       return sparkFx(ax, ay)
     }
     glow = { m: hit.m, t: performance.now() }
+    if (!hit.p) {
+      const s = sheet(hit.m.num)
+      if (--s.life <= 0) {
+        s.outUntil = performance.now() + OUT_MS
+        say(`Il foglio ${hit.m.num} è fuori gioco!`, 1500)
+      }
+    }
     play('hit')
     burstFx(ax, ay, [color(), hit.p?.color ?? '#ffd23f', '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
@@ -185,6 +206,15 @@ export async function playLaser(net: Net, onEnd: () => void) {
     const st = self ? status(self, sNow) : 'in gioco'
     $('out').hidden = st !== 'fuori'
     if (st === 'fuori') {
+      // il velo si svuota e i cuori si riaccendono uno alla volta man mano che passa il tempo
+      const left = Math.max(0, Math.min(1, (self!.outUntil - sNow) / OUT_MS))
+      $('drain').style.setProperty('--left', String(left))
+      const lit = Math.floor((1 - left) * room.config.life)
+      const key = `${lit}`
+      if ($('outh').dataset.k !== key) {
+        $('outh').dataset.k = key
+        $('outh').innerHTML = Array.from({ length: room.config.life }, (_, i) => `<i class="${i < lit ? '' : 'off'}">${icon('heart', 34)}</i>`).join('')
+      }
       $('outt').textContent = `Di nuovo in gioco tra ${Math.ceil((self!.outUntil - sNow) / 1000)}`
       ammo = room.config.ammo
     }
@@ -195,21 +225,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     wasOut = st === 'fuori'
     $('shield').hidden = st !== 'protetto'
 
-    // ricarica: fucile alzato oltre 60 gradi per mezzo secondo
-    if (room.config.ammo && st === 'in gioco') {
-      if (sensors.pitch > RELOAD_PITCH) {
-        upSince ||= now
-        if (ammo < room.config.ammo && now - upSince > 500) {
-          ammo = room.config.ammo
-          net.send({ t: 'reload' })
-          play('reload')
-          say('Carico!', 800)
-        } else if (ammo < room.config.ammo) say('Ricarica...', 0)
-      } else if (upSince) {
-        upSince = 0
-        if (hud.querySelector('.hud-msg')!.textContent === 'Ricarica...') say('')
-      }
-    }
+    if (room.config.ammo && st === 'in gioco') reload(now)
 
     det!.tick(now)
     const ms = now - det!.state.at < 300 ? det!.state.markers : []
@@ -243,7 +259,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
 
   function why(num: number, now: number) {
     const p = participants(room).find((p) => p.marker === num)
-    if (!p) return `Nessuno in partita ha il numero ${num}`
+    if (!p) return me() && practice(room, me()!, num) ? `Il foglio ${num} è fuori gioco` : `Nessuno in partita ha il numero ${num}`
     if (p.id === net.me) return 'Questo è il tuo numero!'
     if (room.config.mode === 'squadre' && p.team === me()?.team) return `${p.name} è della tua squadra`
     return status(p, now) === 'fuori' ? `${p.name} è fuori gioco` : `${p.name} ha lo scudo`
@@ -253,7 +269,12 @@ export async function playLaser(net: Net, onEnd: () => void) {
   function badge(m: Marker, now: number) {
     const p = room.players.find((p) => p.marker === m.num)
     const self = me()
-    if (!p && self && practice(room, self, m.num)) return rings(m, '#ffd23f', ['Foglio di prova', `N. ${m.num}`])
+    if (!p && self && practice(room, self, m.num)) {
+      const s = sheet(m.num)
+      return s.life > 0
+        ? rings(m, '#ffd23f', [`Foglio ${m.num}`, '\u2665'.repeat(s.life)], 0.92, true)
+        : rings(m, '#9aa3ad', [`Foglio ${m.num}`, 'fuori gioco'], 0.6)
+    }
     if (!p) return drawMarker(ctx, m, 'rgba(255,255,255,0.55)', 2)
     const st = status(p, now)
     const life = p.life <= 0 && now >= p.outUntil ? room.config.life : p.life

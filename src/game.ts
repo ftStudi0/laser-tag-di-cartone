@@ -9,7 +9,7 @@ import {
 import { azAt, DIFF, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
 import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
-import { onTrigger } from './trigger.ts'
+import { onTrigger, RELOAD_PITCH, reloader } from './trigger.ts'
 import { esc } from './ui.ts'
 
 export type GameOpts = { theme: Theme; diff: Diff; duration: number } // duration 0 = allenamento
@@ -38,7 +38,6 @@ export type Multi = {
 }
 
 const AMMO = 10
-const RELOAD_PITCH = 60 * D
 const FLY = 0.4 // secondi dell'animazione "vola via"
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -66,7 +65,6 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   let lastShot = -1e9
   let yaw0 = 0
   let ammo = AMMO
-  let upSince = 0
   let score = 0, shots = 0, good = 0, streak = 0, best = 0
   let raf = 0
   let fps = 0
@@ -111,6 +109,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   document.addEventListener('visibilitychange', onHide)
   sensors.onShake = () => phase === 'gioco' && say('Piano! Si cammina', 2000, 'warn')
 
+  const reload = reloader(() => ammo >= AMMO, () => (ammo = AMMO))
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
 
   try {
@@ -170,7 +169,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (sensors.pitch > RELOAD_PITCH) return // durante la ricarica non si spara
     if (useAmmo && ammo === 0) {
       play('click')
-      say('Ricarica! Alza il fucile', 1500, 'warn')
+      say('Ricarica! Alza il fucile o tieni premuto', 1500, 'warn')
       return
     }
     lastShot = now
@@ -308,20 +307,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       }
     }
 
-    // ricarica: fucile alzato oltre 60 gradi per mezzo secondo
-    if (useAmmo && phase === 'gioco') {
-      if (sensors.pitch > RELOAD_PITCH) {
-        upSince ||= now
-        if (ammo < AMMO && now - upSince > 500) {
-          ammo = AMMO
-          play('reload')
-          say('Carico!', 800)
-        } else if (ammo < AMMO) say('Ricarica...', 0)
-      } else if (upSince) {
-        upSince = 0
-        if (hud.querySelector('.hud-msg')!.textContent === 'Ricarica...') say('')
-      }
-    }
+    if (useAmmo && phase === 'gioco') reload(now)
 
     draw(now)
     updateHud()

@@ -183,13 +183,13 @@ function rulesHtml(c: Config) {
   ])
   if (c.game === 'sfida') return rulesBox([
     ['target', 'Si spara', 'I bersagli compaiono intorno a te: girati, mira e tocca il grilletto. Tutti hanno gli stessi bersagli.'],
-    ['up', 'Si ricarica', ammo ? 'Hai 10 colpi. Per ricaricare alza il fucile verso il soffitto.' : 'In Facile i colpi sono infiniti.'],
+    ['up', 'Si ricarica', ammo ? 'Hai 10 colpi. Per ricaricare alza il fucile verso il soffitto o tieni premuto il grilletto 5 secondi.' : 'In Facile i colpi sono infiniti.'],
     ['heart', 'Attenzione', c.theme === 'zombi' ? 'Se uno zombi ti arriva vicino ti fa il solletico: un punto in meno.' : 'Non colpire il gattino col cuore: toglie 2 punti.'],
     ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra che fa più punti: si sommano i punti di tutti.' : 'Vince chi ha più punti alla fine. La classifica si vede durante la sfida.'],
   ])
   return rulesBox([
     ['zap', 'Si spara', 'Metti il mirino sul foglio di un avversario e tocca il grilletto.'],
-    ['up', 'Si ricarica', c.ammo ? `Hai ${c.ammo} colpi. Per ricaricare alza il fucile verso il soffitto.` : 'Colpi infiniti in questa partita.'],
+    ['up', 'Si ricarica', c.ammo ? `Hai ${c.ammo} colpi. Per ricaricare alza il fucile verso il soffitto o tieni premuto il grilletto 5 secondi.` : 'Colpi infiniti in questa partita.'],
     ['heart', 'Fuori gioco', `Hai ${c.life} cuori. Quando finiscono stai fuori 8 secondi, poi rientri con lo scudo.`],
     ['crown', 'Si vince', c.mode === 'squadre' ? 'Vince la squadra con più punti. Non si colpiscono i compagni.' : '1 punto per ogni colpo, 3 in più quando mandi qualcuno fuori gioco.'],
   ])
