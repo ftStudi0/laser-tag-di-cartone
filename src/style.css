@@ -1121,15 +1121,18 @@ input[type='checkbox'] {
   #print {
     display: block;
   }
+  /* Altezza libera: se il browser o la stampante aggiungono margini, un'altezza fissa sborda e crea pagine vuote. */
   .sheet {
-    width: 210mm;
-    height: 296mm;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 12mm;
+    break-inside: avoid;
     break-after: page;
     color: #000;
+  }
+  .sheet:last-child {
+    break-after: auto;
   }
   /* 8 celle in tutto: 6 di marker nero più una cella bianca per lato. Nero di 144 mm. */
   .mk svg {
@@ -1149,8 +1152,7 @@ input[type='checkbox'] {
     font-weight: 800;
   }
   .sheet-note {
-    margin-top: auto;
-    margin-bottom: 10mm;
+    margin-top: 6mm;
     font-size: 10pt;
   }
 }
