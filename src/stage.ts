@@ -211,7 +211,7 @@ export function burstFx(x: number, y: number, colors: string[]) {
 export function textFx(x: number, y: number, text: string, color: string) {
   add(850, (k) => {
     ctx.globalAlpha = 1 - k * k
-    ctx.font = '800 30px ui-rounded, system-ui, sans-serif'
+    ctx.font = "800 32px 'Baloo 2 Variable', ui-rounded, system-ui, sans-serif"
     ctx.textAlign = 'center'
     ctx.lineWidth = 5
     ctx.strokeStyle = 'rgba(0,0,0,0.55)'

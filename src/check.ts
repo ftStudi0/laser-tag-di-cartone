@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { D, deviceQuat, dirFrom, forward, fovFromFocal, project, qRot, solveFocal, viewFor, yawOf } from './math.ts'
 import { insertRecord } from './settings.ts'
-import { schedule } from './targets.ts'
+import { schedule, zDist, ZOMBIE, zombieSchedule } from './targets.ts'
 
 const near = (a: number, b: number, e = 1e-6) => assert.ok(Math.abs(a - b) < e, `${a} != ${b}`)
 
@@ -39,6 +39,15 @@ for (const t of a) {
 }
 assert.ok(a.filter((t) => t.born < 10).every((t) => Math.abs(t.az) <= 50 * D), 'i primi bersagli stanno davanti')
 assert.ok(schedule(1, 'difficile', 120).some((t) => Math.abs(t.az) > 150 * D), 'alla fine anche dietro')
+
+// zombi: stessa sequenza dallo stesso seme, partono lontano e arrivano alla distanza minima a fine vita
+const zs = zombieSchedule(7, 'media', 60)
+assert.deepEqual(zs, zombieSchedule(7, 'media', 60))
+for (const z of zs) {
+  assert.ok(z.d0! >= 5.5 && zDist(z, z.born) === z.d0)
+  near(zDist(z, z.born + z.life), ZOMBIE.reach)
+  assert.notEqual(z.kind, 'amico')
+}
 
 // classifica: i 10 migliori, ordinati
 let list = Array.from({ length: 10 }, (_, i) => ({ name: 'a', score: (i + 1) * 10, acc: 0.5, streak: 1, date: 0 }))

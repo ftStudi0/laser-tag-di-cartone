@@ -4,8 +4,16 @@
   --ink: #2b2340;
   --muted: #6b6380;
   --line: #f0dcc0;
-  --primary: #ff7a45;
-  --primary-dark: #d9572a;
+  /* bianco su --primary 3.9:1 (solo testo grande e grassetto), su --primary-strong 5:1 */
+  --primary: #e0531f;
+  --primary-strong: #c44619;
+  --primary-dark: #a83d17;
+  --chip: #ffe7c7;
+  --chip-ok: #d4f5e4;
+  --chip-warn: #ffd9c2;
+  --chip-warn-ink: #a33d10;
+  --selected: #e3efff;
+  --ease: 160ms ease-out;
   --blue: #3d8bfd;
   --yellow: #ffd23f;
   --green: #2ec27e;
@@ -21,6 +29,10 @@
   --sb: max(10px, env(safe-area-inset-bottom));
 }
 
+[hidden] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -31,7 +43,10 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Baloo 2 Variable', ui-rounded, system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.35;
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
   user-select: none;
   -webkit-user-select: none;
@@ -56,7 +71,7 @@ h1 {
   margin: 0;
   font-size: 28px;
   line-height: 1;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--primary-dark);
 }
 h1 span {
@@ -76,10 +91,10 @@ h3 {
 .top {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 20px;
+  gap: 6px 20px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .me {
   display: flex;
@@ -87,14 +102,25 @@ h3 {
   gap: 8px;
   align-items: center;
 }
+.lbl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.me .swatches {
+  gap: 4px;
+}
 .me input {
   font: inherit;
   font-size: 18px;
   font-weight: 700;
-  padding: 8px 12px;
+  padding: 4px 12px;
+  min-height: 44px;
   border: 3px solid var(--line);
   border-radius: 14px;
-  width: 170px;
+  width: 160px;
   background: var(--card);
   color: var(--ink);
   user-select: text;
@@ -105,8 +131,8 @@ h3 {
   gap: 5px;
 }
 .sw {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 3px solid #fff;
   background: var(--c);
@@ -122,12 +148,55 @@ button {
   font: inherit;
   color: inherit;
   cursor: pointer;
+  transition: transform var(--ease), border-width var(--ease), background-color var(--ease);
+}
+button:disabled {
+  cursor: default;
+}
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+/* pressione: il pulsante scende un po', come un giocattolo */
+.btn:active,
+.seg button:active,
+.card:active,
+.step:active,
+.sw:active,
+.hud-btn:active {
+  transform: translateY(2px) scale(0.98);
+}
+.i {
+  flex: none;
+}
+input[type='range'],
+input[type='checkbox'] {
+  accent-color: var(--primary-strong);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+.grid .big {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  justify-items: start;
+  align-content: center;
+  min-height: 68px;
+  padding: 8px 16px;
+  text-align: left;
+  line-height: 1.1;
+}
+.grid .big .i {
+  grid-row: span 2;
+  align-self: center;
+}
+.grid .big small {
+  grid-column: 2;
 }
 @media (max-width: 560px) {
   .grid {
@@ -150,9 +219,11 @@ button {
   border-bottom-width: 7px;
   border-radius: 20px;
 }
-.big .ico {
-  font-size: 28px;
-  line-height: 1;
+.big .i {
+  color: var(--primary-strong);
+}
+.big.primary .i {
+  color: #fff;
 }
 .big small {
   font-size: 13px;
@@ -164,7 +235,9 @@ button {
   border-bottom-width: 4px;
 }
 .big:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
+  border-style: dashed;
+  border-bottom-width: 3px;
 }
 .primary {
   background: var(--primary);
@@ -174,11 +247,19 @@ button {
 .big.go {
   width: 100%;
   margin-top: 14px;
-  font-size: 26px;
+  min-height: 64px;
+  flex-direction: row;
+  gap: 10px;
+  font-size: 28px;
 }
 
 .btn {
-  padding: 9px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 16px;
   font-size: 16px;
   font-weight: 700;
   background: var(--card);
@@ -187,13 +268,13 @@ button {
   border-radius: 14px;
 }
 .btn.primary {
-  background: var(--primary);
+  background: var(--primary-strong);
   border-color: var(--primary-dark);
   color: #fff;
 }
 .btn.small {
-  padding: 6px 12px;
-  font-size: 15px;
+  padding: 6px 14px;
+  font-size: 16px;
 }
 
 .chips {
@@ -206,19 +287,19 @@ button {
 .chip {
   padding: 6px 12px;
   border-radius: 99px;
-  background: #ffe7c7;
-  font-size: 14px;
+  background: var(--chip);
+  font-size: 15px;
   font-weight: 700;
 }
 .chip.ok {
-  background: #d4f5e4;
+  background: var(--chip-ok);
 }
 .chip.warn {
-  background: #ffd9c2;
-  color: #a33d10;
+  background: var(--chip-warn);
+  color: var(--chip-warn-ink);
 }
 .hint {
-  background: #e3efff;
+  background: var(--selected);
   padding: 10px 14px;
   border-radius: 14px;
   margin: 8px 0;
@@ -226,7 +307,8 @@ button {
 .safety {
   color: var(--muted);
   font-weight: 600;
-  margin: 8px 0 0;
+  margin: 0;
+  flex-basis: 100%;
 }
 .note {
   color: var(--muted);
@@ -251,7 +333,7 @@ button {
 }
 .card {
   flex: 1;
-  min-width: 120px;
+  min-width: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -263,13 +345,55 @@ button {
   border-radius: 18px;
 }
 .card canvas {
-  width: 120px;
-  height: 90px;
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  aspect-ratio: 240 / 150;
 }
+/* scelta attiva: bordo blu, fondo azzurro e spunta, non solo il colore */
 .card.on,
 .seg .on {
   border-color: var(--blue);
-  background: #e3efff;
+  background: var(--selected);
+}
+.seg .on::before {
+  content: '✓ ';
+  color: var(--blue);
+}
+.card {
+  position: relative;
+}
+.card.on::after {
+  content: '✓';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 16px;
+  line-height: 26px;
+}
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 18px;
+}
+@media (max-width: 640px) {
+  .two {
+    grid-template-columns: 1fr;
+  }
+}
+.cta-bar {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 var(--sb);
+  background: linear-gradient(transparent, var(--bg) 30%);
+}
+.cta-bar .go {
+  margin: 0;
 }
 .seg {
   display: flex;
@@ -278,7 +402,8 @@ button {
 }
 .seg button {
   flex: 1;
-  padding: 10px;
+  min-height: 48px;
+  padding: 8px 10px;
   font-size: 17px;
   font-weight: 800;
   background: var(--card);
@@ -296,7 +421,7 @@ button {
 
 .score-big {
   font-size: 72px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--primary-dark);
   text-align: center;
   line-height: 1;
@@ -307,6 +432,11 @@ button {
   color: var(--muted);
 }
 .badge {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-strong);
   text-align: center;
   font-size: 20px;
   font-weight: 800;
@@ -339,7 +469,7 @@ button {
   border-top: 2px solid var(--bg);
 }
 .rec tr.mine td {
-  background: #fff1b8;
+  background: #fff1b8; /* riga di chi ha appena giocato */
   font-weight: 800;
 }
 
@@ -438,20 +568,25 @@ button {
 }
 .hud-tr {
   position: absolute;
+  z-index: 2; /* sopra lo strato "Pausa", per poter riprendere */
   top: var(--st);
   right: var(--sr);
   display: flex;
   gap: 8px;
 }
 .hud-btn {
-  width: 46px;
-  height: 46px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 0;
-  font-size: 20px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.82);
   color: var(--ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.hud-full small .i {
+  vertical-align: -3px;
 }
 /* ai lati a metà altezza: punteggio e tempo */
 .hud-ml,
@@ -632,5 +767,14 @@ button {
   to {
     transform: scale(1.6);
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 1ms !important;
   }
 }

@@ -45,6 +45,7 @@ const SOUNDS: Record<string, [number, Synth]> = {
   pop_palloncini: [0.15, (c, o) => { noise(c, o, 0, 0.09, 1.6, 1200); tone(c, o, 'sine', 160, 60, 0, 0.08, 0.4) }],
   pop_stelle: [0.45, (c, o) => [1568, 2093, 2637].forEach((f, i) => tone(c, o, 'sine', f, f, i * 0.05, 0.22, 0.2))],
   pop_mostri: [0.4, (c, o) => { tone(c, o, 'sine', 180, 700, 0, 0.14, 0.35); tone(c, o, 'sine', 700, 300, 0.14, 0.22, 0.25) }],
+  pop_zombi: [0.45, (c, o) => { tone(c, o, 'sine', 220, 140, 0, 0.18, 0.3); tone(c, o, 'triangle', 300, 900, 0.16, 0.2, 0.25); noise(c, o, 0.16, 0.06, 1, 2500) }],
   pop_lattine: [0.4, (c, o) => { [523, 787, 1150].forEach((f) => tone(c, o, 'square', f, f * 0.98, 0, 0.3, 0.07)); noise(c, o, 0, 0.05, 1, 4000, 1) }],
 }
 

@@ -1,12 +1,14 @@
 import { play } from './audio.ts'
+import { icon } from './icons.ts'
 import { D, dirFrom, forward, project, screenDir, type Vec3 } from './math.ts'
 import { mode, sensors } from './sensors.ts'
 import { recordKey, saveRecord, settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, videoSize, view,
 } from './stage.ts'
-import { azAt, DIFF, POINTS, schedule, trainingTarget, type Diff, type Target, type Theme } from './targets.ts'
-import { drawTarget, GOLD, TINTS } from './themes.ts'
+import { azAt, DIFF, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
+import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
+import type { Z3 } from './zombie3d.ts'
 import { onTrigger } from './trigger.ts'
 
 export type GameOpts = { theme: Theme; diff: Diff; duration: number } // duration 0 = allenamento
@@ -15,13 +17,18 @@ export type Result = GameOpts & { score: number; shots: number; good: number; be
 const AMMO = 10
 const RELOAD_PITCH = 60 * D
 const FLY = 0.4 // secondi dell'animazione "vola via"
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void) {
   const training = opts.duration === 0
   const sizeMul = mode() === 'bussola' ? 1.5 : 1 // la bussola trema: bersagli più grandi
   const useAmmo = DIFF[opts.diff].ammo && !training
-  const targets: Target[] = training ? [] : schedule((Math.random() * 2 ** 32) >>> 0, opts.diff, opts.duration, sizeMul)
+  const zombi = opts.theme === 'zombi'
+  const seed = (Math.random() * 2 ** 32) >>> 0
+  const targets: Target[] = training ? [] : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
   const color = settings.color
+  const H = settings.gunH // altezza degli occhi sul pavimento virtuale
+  let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
 
   let phase: 'mira' | 'via' | 'gioco' | 'fine' = 'mira'
   let paused = false
@@ -41,14 +48,14 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   hud.innerHTML = `
     <div class="hud-tl pill" data-ammo></div>
     <div class="hud-tr">
-      <button class="hud-btn" data-a="pausa" aria-label="Pausa">⏸</button>
-      <button class="hud-btn" data-a="ricentra" aria-label="Ricentra">⟳</button>
-      <button class="hud-btn" data-a="esci" aria-label="Esci">✕</button>
+      <button class="hud-btn" data-a="pausa" aria-label="Pausa">${icon('pause')}</button>
+      <button class="hud-btn" data-a="ricentra" aria-label="Ricentra">${icon('recenter')}</button>
+      <button class="hud-btn" data-a="esci" aria-label="Esci">${icon('close')}</button>
     </div>
     <div class="hud-ml pill"><b data-score>0</b><small>punti</small><small data-streak></small></div>
     <div class="hud-mr pill"><b data-time>${training ? 'Allenamento' : fmt(opts.duration)}</b></div>
     <div class="hud-msg" hidden></div>
-    <div class="hud-full" data-pause hidden>Pausa<small>Tocca ▶ per riprendere</small></div>
+    <div class="hud-full" data-pause hidden>Pausa<small>Tocca ${icon('play', 18)} in alto a destra per riprendere</small></div>
     <div class="hud-full" data-portrait hidden>Gira il telefono in orizzontale</div>
     <pre class="hud-debug" data-debug ${settings.debug ? '' : 'hidden'}></pre>`
   const $ = (s: string) => hud.querySelector<HTMLElement>(`[data-${s}]`)!
@@ -57,7 +64,8 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   const setPaused = (p: boolean) => {
     paused = p
     $('pause').hidden = !p
-    pauseBtn.textContent = p ? '▶' : '⏸'
+    pauseBtn.innerHTML = icon(p ? 'play' : 'pause')
+    pauseBtn.setAttribute('aria-label', p ? 'Riprendi' : 'Pausa')
   }
 
   hud.querySelector('.hud-tr')!.addEventListener('click', (e) => {
@@ -84,6 +92,16 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     alert('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.')
     return
   }
+  if (zombi && settings.z3d) {
+    try {
+      const { createZombies3D } = await import('./zombie3d.ts')
+      const stageEl = document.getElementById('stage')!
+      z3 = createZombies3D(stageEl, stageEl.querySelector('canvas')!)
+    } catch {
+      say('Il 3D non si è caricato: uso il 2D', 2500, 'warn')
+    }
+  }
+  if ((phase as string) === 'fine') return // uscita durante il caricamento (finish la cambia)
   say('Punta il fucile davanti a te e premi il grilletto')
   raf = requestAnimationFrame(frame)
 
@@ -91,8 +109,14 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     return t.hitAt === undefined && t.born <= gameT && gameT < t.born + t.life
   }
 
-  function dirOf(t: Target) {
-    return dirFrom(yaw0 + azAt(t, gameT), t.el)
+  // Direzione e distanza del punto da colpire. Gli zombi camminano sul pavimento, H metri sotto gli occhi.
+  function geo(t: Target): { dir: Vec3; dist: number } {
+    if (t.d0 === undefined) return { dir: dirFrom(yaw0 + azAt(t, gameT), t.el), dist: t.dist }
+    const d = zDist(t, gameT)
+    const h = dirFrom(yaw0 + t.az, 0)
+    const y = ZOMBIE.hitY - H
+    const len = Math.hypot(d, y)
+    return { dir: [(h[0] * d) / len, y / len, (h[2] * d) / len], dist: len }
   }
 
   function fire() {
@@ -145,6 +169,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     best = Math.max(best, streak)
     score += pts
     play('pop_' + opts.theme)
+    if (zombi) say(['Preso!', 'Che solletico!', 'Puff!'][good % 3], 600)
     play('hit')
     burstFx(ax, ay, [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
@@ -157,9 +182,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     let bestT: Target | null = null, bestD = Infinity
     for (const t of targets) {
       if (!alive(t) || (kindFilter && t.kind === 'amico')) continue
-      const p = project(sensors.q, dirOf(t), v)
+      const g = geo(t)
+      const p = project(sensors.q, g.dir, v)
       if (!p) continue
-      const r = (v.f * (t.r / t.dist)) / p.depth
+      const r = (v.f * (t.r / g.dist)) / p.depth
       const d = Math.hypot(p.x - x, p.y - y) / (r * (1 + settings.tol))
       if (d <= 1 && d < bestD) {
         bestD = d
@@ -195,7 +221,25 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (phase === 'gioco' && !training && gameT >= opts.duration) return finish(false)
 
     if (training && phase === 'gioco') {
-      while (targets.filter(alive).length < 3) targets.push(trainingTarget(targets.length, gameT, sizeMul))
+      while (targets.filter(alive).length < 3) {
+        const t = trainingTarget(targets.length, gameT, sizeMul)
+        // zombi fermi in piedi, a 3-5 metri
+        targets.push(zombi ? { ...t, el: 0, d0: t.dist, v: 0, r: ZOMBIE.hitR * sizeMul } : t)
+      }
+    }
+
+    // uno zombi arrivato vicino ti fa il solletico: un punto in meno
+    if (zombi && phase === 'gioco') {
+      for (const t of targets) {
+        if (t.hitAt !== undefined || gameT < t.born + t.life) continue
+        t.hitAt = gameT
+        t.caught = true
+        score = Math.max(0, score - 1)
+        streak = 0
+        play('oops')
+        say('Uno zombi ti ha fatto il solletico! -1', 1500, 'warn')
+        navigator.vibrate?.([40, 60, 40])
+      }
     }
 
     // ricarica: fucile alzato oltre 60 gradi per mezzo secondo
@@ -225,33 +269,44 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     let nearest: { a: number; d: [number, number] } | null = null
     const fwd = forward(sensors.q)
     let anyVisible = false
+    const zs: { tg: Target; d: number; pop: number }[] = []
     if (phase === 'gioco') {
       for (const tg of targets) {
-        if (tg.born > gameT || tg.hitAt !== undefined) continue
+        if (tg.born > gameT) continue
         const end = tg.born + tg.life
-        if (gameT >= end + FLY) continue
-        const p = project(sensors.q, dirOf(tg), v)
-        const r = p ? (v.f * (tg.r / tg.dist)) / p.depth : 0
-        const onScreen = p && p.x > -r && p.x < size.w + r && p.y > -r && p.y < size.h + r
-        if (!onScreen) {
-          if (gameT < end && tg.kind !== 'amico') {
-            const dir = dirOf(tg)
-            const ang = Math.acos(Math.max(-1, Math.min(1, dot(fwd, dir))))
-            if (!nearest || ang < nearest.a) nearest = { a: ang, d: screenDir(sensors.q, dir) }
+        const pop = tg.hitAt !== undefined ? (gameT - tg.hitAt) / 0.25 : 0 // zombi colpito: si rimpicciolisce e sparisce
+        if (tg.hitAt !== undefined && (!zombi || tg.caught || pop >= 1)) continue
+        if (!zombi && gameT >= end + FLY) continue
+        const g = geo(tg)
+        const p = project(sensors.q, g.dir, v)
+        const r = p ? (v.f * (tg.r / g.dist)) / p.depth : 0
+        const m = zombi ? r * 2 : r
+        const onScreen = p && p.x > -m && p.x < size.w + m && p.y > -m && p.y < size.h + m
+        const isAlive = alive(tg)
+        if (isAlive && tg.kind !== 'amico') {
+          if (onScreen) anyVisible = true
+          else {
+            const ang = Math.acos(Math.max(-1, Math.min(1, dot(fwd, g.dir))))
+            if (!nearest || ang < nearest.a) nearest = { a: ang, d: screenDir(sensors.q, g.dir) }
           }
+        }
+        if (zombi) {
+          zs.push({ tg, d: zDist(tg, gameT), pop })
           continue
         }
-        if (gameT < end && tg.kind !== 'amico') anyVisible = true
-        const pop = Math.min(1, (gameT - tg.born) / 0.2)
+        if (!onScreen) continue
+        const popIn = Math.min(1, (gameT - tg.born) / 0.2)
         const fly = Math.max(0, (gameT - end) / FLY)
         ctx.save()
         ctx.globalAlpha = 1 - fly
-        drawTarget(ctx, opts.theme, tg.kind, tg.tint, p.x, p.y - fly * r * 2, r * (0.6 + 0.4 * pop), t)
+        drawTarget(ctx, opts.theme, tg.kind, tg.tint, p.x, p.y - fly * r * 2, r * (0.6 + 0.4 * popIn), t)
         ctx.restore()
       }
+      if (zombi) drawZombies(zs, v, t)
       // la freccia solo se non si vede nessun bersaglio da colpire, per non confondere
       if (nearest && !anyVisible) arrow(nearest.d)
     }
+    if (z3 && phase !== 'gioco') z3.render([], sensors.q, v, size.w, size.h, H, t)
     drawFx()
     const locked = phase === 'gioco' && !paused && pick(ax, ay, true) !== null
     drawCrosshair(ax, ay, locked, color)
@@ -260,6 +315,35 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       $('debug').textContent =
         `fps ${fps.toFixed(0)}  sensori ${mode()}\nimbardata ${(sensors.yaw / D).toFixed(1)}  beccheggio ${(sensors.pitch / D).toFixed(1)}\n` +
         `fov ${settings.fov.toFixed(1)}  video ${vw}x${vh}  f ${v.f.toFixed(0)}\nbersagli vivi ${targets.filter(alive).length}  t ${gameT.toFixed(1)}`
+    }
+  }
+
+  // Zombi: in 3D li disegna Three.js, in 2D sagome con i piedi sul pavimento, dal più lontano al più vicino.
+  function drawZombies(zs: { tg: Target; d: number; pop: number }[], v: ReturnType<typeof view>, t: number) {
+    if (z3) {
+      z3.render(
+        zs.map(({ tg, d, pop }) => {
+          const h = dirFrom(yaw0 + tg.az, 0)
+          return { id: tg.id, x: h[0] * d, z: h[2] * d, kind: tg.kind, tint: tg.tint, speed: Math.max(0.3, (tg.v ?? 0) / 0.4), pop }
+        }),
+        sensors.q, v, size.w, size.h, H, t,
+      )
+      return
+    }
+    zs.sort((a, b) => b.d - a.d)
+    for (const { tg, d, pop } of zs) {
+      const h = dirFrom(yaw0 + tg.az, 0)
+      const feet = project(sensors.q, [h[0] * d, -H, h[2] * d], v)
+      const head = project(sensors.q, [h[0] * d, ZOMBIE.height - H, h[2] * d], v)
+      if (!feet || !head) continue
+      const px = feet.y - head.y
+      if (feet.x < -px || feet.x > size.w + px || head.y > size.h || feet.y < 0) continue
+      ctx.save()
+      ctx.globalAlpha = 1 - pop
+      ctx.translate(feet.x, feet.y)
+      ctx.scale(1 - pop, 1 - pop)
+      drawZombie(ctx, 0, 0, px, t, tg.kind, tg.tint, Math.max(0.3, (tg.v ?? 0) / 0.4))
+      ctx.restore()
     }
   }
 
@@ -278,7 +362,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     ctx.strokeStyle = 'rgba(40,30,60,0.7)'
     ctx.lineWidth = 4
     ctx.lineJoin = 'round'
-    const k = 1 + 0.12 * Math.sin(performance.now() / 120)
+    const k = REDUCED ? 1 : 1 + 0.12 * Math.sin(performance.now() / 120)
     ctx.scale(k, k)
     ctx.beginPath()
     ctx.moveTo(26, 0)
@@ -315,11 +399,12 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     offTrigger()
     document.removeEventListener('visibilitychange', onHide)
     sensors.onShake = () => {}
+    z3?.dispose()
     closeStage()
     if (aborted || training) return onEnd(null)
     play('end')
     const name = settings.name || 'Senza nome'
-    const rank = saveRecord(recordKey(opts.diff, opts.duration), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
+    const rank = saveRecord(recordKey(opts.diff, opts.duration, zombi), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
     onEnd({ ...opts, score, shots, good, best, rank })
   }
 }

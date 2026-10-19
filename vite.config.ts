@@ -5,4 +5,6 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [basicSsl()],
   server: { allowedHosts: ['.trycloudflare.com'] },
+  build: { chunkSizeWarningLimit: 600 }, // Three.js (solo zombi 3D) sta in un file a parte da circa 530 kB
+  optimizeDeps: { entries: ['index.html'] }, // non analizzare docs/fucile-3d.html
 })

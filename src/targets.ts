@@ -2,7 +2,7 @@ import { D } from './math.ts'
 
 export type Diff = 'facile' | 'media' | 'difficile'
 export type Kind = 'normale' | 'veloce' | 'dorato' | 'amico'
-export type Theme = 'palloncini' | 'stelle' | 'mostri' | 'lattine'
+export type Theme = 'palloncini' | 'stelle' | 'mostri' | 'lattine' | 'zombi'
 
 export type Target = {
   id: number
@@ -16,6 +16,10 @@ export type Target = {
   vaz: number // rad/s, solo per i veloci
   tint: number
   hitAt?: number
+  // zombi: partono a d0 metri e camminano verso il giocatore a v m/s; life = tempo per arrivare
+  d0?: number
+  v?: number
+  caught?: boolean
 }
 
 // r: raggio del bersaglio, life: secondi prima che voli via, every: secondi tra un bersaglio e l'altro,
@@ -75,4 +79,32 @@ export function trainingTarget(id: number, now: number, sizeMul = 1): Target {
     az: (Math.random() * 2 - 1) * 40 * D, el: (-5 + Math.random() * 30) * D,
     r: DIFF.facile.r * sizeMul, dist: 3 + Math.random() * 2, vaz: 0, tint: id % 4,
   }
+}
+
+// Zombi buffi: camminano sul pavimento virtuale verso il giocatore.
+export const ZOMBIE = { height: 1.5, hitY: 0.85, hitR: 0.5, reach: 1.8 } // metri; più vicino di 1,8 m riempirebbero lo schermo
+export const ZDIFF = {
+  facile: { every: 2.6, v: 0.3, spread: 200 },
+  media: { every: 1.9, v: 0.45, spread: 300 },
+  difficile: { every: 1.4, v: 0.6, spread: 360 },
+}
+
+export const zDist = (t: Target, now: number) => Math.max(ZOMBIE.reach, t.d0! - t.v! * (now - t.born))
+
+export function zombieSchedule(seed: number, diff: Diff, duration: number, sizeMul = 1): Target[] {
+  const d = ZDIFF[diff]
+  const rnd = mulberry32(seed)
+  const out: Target[] = []
+  for (let t = 1.5, id = 0; t < duration - 2; t += d.every * (0.75 + rnd() * 0.5), id++) {
+    const half = (45 + Math.max(0, (t / duration - 0.15) / 0.85) * (d.spread / 2 - 45)) * D
+    const roll = rnd()
+    const kind: Kind = roll < 0.07 ? 'dorato' : roll < 0.3 ? 'veloce' : 'normale'
+    const d0 = 5.5 + rnd() * 1.5
+    const v = d.v * (kind === 'veloce' ? 1.6 : kind === 'dorato' ? 1.3 : 1)
+    out.push({
+      id, kind, az: (rnd() * 2 - 1) * half, el: 0, born: t, life: (d0 - ZOMBIE.reach) / v,
+      r: ZOMBIE.hitR * sizeMul, dist: d0, vaz: 0, tint: Math.floor(rnd() * 4), d0, v,
+    })
+  }
+  return out
 }

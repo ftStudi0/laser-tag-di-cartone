@@ -24,6 +24,8 @@ const DEFAULTS = {
   theme: 'palloncini' as Theme,
   diff: 'facile' as Diff,
   duration: 60, // 0 = allenamento
+  gunH: 1.2, // altezza del fucile da terra in metri, per il pavimento virtuale degli zombi
+  z3d: false, // zombi disegnati in 3D
 }
 export type Settings = typeof DEFAULTS
 
@@ -51,7 +53,7 @@ export function insertRecord(list: Rec[], r: Rec): [Rec[], number] {
   return [l, l.indexOf(r)]
 }
 
-export const recordKey = (diff: Diff, duration: number) => `lt:rec:tiro:${diff}:${duration}`
+export const recordKey = (diff: Diff, duration: number, zombi = false) => `lt:rec:${zombi ? 'zombi' : 'tiro'}:${diff}:${duration}`
 export const loadRecords = (key: string): Rec[] => read(key, [])
 
 // Restituisce la posizione in classifica (0 = primo) oppure -1.
