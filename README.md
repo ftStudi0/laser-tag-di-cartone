@@ -70,7 +70,7 @@ I tipi del Worker (`worker/worker-configuration.d.ts`) si rigenerano da soli a o
 
 ## Partite in gruppo
 
-- Il regista sceglie **Laser tag** oppure **Sfida a bersagli** (stessi bersagli per tutti, ognuno spara ai suoi, classifica in diretta; serve il giroscopio).
+- Il regista sceglie **Laser tag** oppure **Sfida a bersagli** (stessi bersagli per tutti, ognuno spara ai suoi, classifica in diretta, anche a squadre; serve il giroscopio).
 - Per il laser tag stampa i marker da **Stampa i marker** (un foglio A4 per giocatore, due copie: petto e schiena). Stampa al 100%.
 - Un telefono tocca **Crea partita** e diventa il regista: mostra il codice di 4 lettere e il QR. Può giocare anche lui o fare solo da arbitro (plancia con punteggi e comandi).
 - Gli altri toccano **Entra in partita**, scrivono il codice (o inquadrano il QR), scelgono il numero del proprio marker e toccano **Ho il fucile pronto**.

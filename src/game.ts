@@ -23,6 +23,7 @@ export type Multi = {
   pause: (on: boolean) => void
   report: (s: { score: number; shots: number; good: number; best: number }) => void
   board: () => { name: string; score: number; me: boolean }[]
+  color?: string // a squadre: il colore della squadra
 }
 
 const AMMO = 10
@@ -37,7 +38,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   const zombi = opts.theme === 'zombi'
   const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
   const targets: Target[] = training ? [] : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
-  const color = settings.color
+  const color = multi?.color ?? settings.color
   const H = settings.gunH // altezza degli occhi sul pavimento virtuale
   let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
 
