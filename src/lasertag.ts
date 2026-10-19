@@ -1,4 +1,4 @@
-import { play, setVolume } from './audio.ts'
+import { audioState, play, setVolume } from './audio.ts'
 import { fmt } from './game.ts'
 import { icon } from './icons.ts'
 import { D } from './math.ts'
@@ -8,7 +8,7 @@ import { COUNTDOWN_MS, endAt, participants, remaining, RATE_MS, status, TEAMS, t
 import { mode, sensors } from './sensors.ts'
 import { settings } from './settings.ts'
 import {
-  aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx,
+  aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, video,
 } from './stage.ts'
 import { onTrigger } from './trigger.ts'
 
@@ -136,8 +136,13 @@ export async function playLaser(net: Net, onEnd: () => void) {
     const [ax, ay] = aimPoint()
     const ms = await det.fresh()
     const hit = target(ms, ax, ay, net.serverNow())
-    net.send({ t: 'shot', marker: markerUnder(ms, ax, ay)?.num ?? null })
-    if (!hit) return sparkFx(ax, ay)
+    const under = markerUnder(ms, ax, ay)
+    net.send({ t: 'shot', marker: under?.num ?? null })
+    if (!hit) {
+      // marker visto ma non colpibile: si dice perché, così si capisce che il riconoscimento funziona
+      if (under) say(why(under.num, net.serverNow()), 1400, 'warn')
+      return sparkFx(ax, ay)
+    }
     glow = { m: hit.m, t: performance.now() }
     play('hit')
     burstFx(ax, ay, [color(), hit.p.color, '#ffffff', '#ffd23f'])
@@ -210,7 +215,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     ctx.clearRect(0, 0, size.w, size.h)
     const [ax, ay] = aimPoint()
     const t = target(ms, ax, ay, sNow)
-    for (const m of ms) if (m !== t?.m) drawMarker(ctx, m, 'rgba(255,255,255,0.55)', 2)
+    for (const m of ms) badge(m, sNow)
     if (t) drawMarker(ctx, t.m, color(), 4)
     // il marker colpito si illumina per un istante
     if (glow && now - glow.t < 250) {
@@ -231,8 +236,52 @@ export async function playLaser(net: Net, onEnd: () => void) {
     updateHud(sNow)
     if (settings.debug)
       $('debug').textContent = `fps ${fps.toFixed(0)}  marker ${det!.state.fps.toFixed(0)} al secondo, ${det!.state.ms.toFixed(0)} ms\n` +
-        `visti ${ms.map((m) => m.num).join(', ') || 'nessuno'}  beccheggio ${(sensors.pitch / D).toFixed(0)}\n` +
-        `orologio ${net.offset.toFixed(0)} ms  ${net.online ? 'in linea' : 'disconnesso'}`
+        `video ${video.videoWidth}x${video.videoHeight}  visti ${ms.map((m) => m.num).join(', ') || 'nessuno'}${ms[0] ? ` (lato ${ms[0].side.toFixed(0)} px)` : ''}  beccheggio ${(sensors.pitch / D).toFixed(0)}\n` +
+        `orologio ${net.offset.toFixed(0)} ms  ${net.online ? 'in linea' : 'disconnesso'}  sensori ${mode()}  audio ${audioState()}`
+  }
+
+  function why(num: number, now: number) {
+    const p = participants(room).find((p) => p.marker === num)
+    if (!p) return `Nessuno in partita ha il numero ${num}`
+    if (p.id === net.me) return 'Questo è il tuo numero!'
+    if (room.config.mode === 'squadre' && p.team === me()?.team) return `${p.name} è della tua squadra`
+    return status(p, now) === 'fuori' ? `${p.name} è fuori gioco` : `${p.name} ha lo scudo`
+  }
+
+  // Sopra il marker si disegna il bersaglio del giocatore con nome, cuori e punti. Il riconoscimento usa il video, non il disegno.
+  function badge(m: Marker, now: number) {
+    const p = room.players.find((p) => p.marker === m.num)
+    if (!p) return drawMarker(ctx, m, 'rgba(255,255,255,0.55)', 2)
+    const cx = m.pts.reduce((s, q) => s + q[0], 0) / 4
+    const cy = m.pts.reduce((s, q) => s + q[1], 0) / 4
+    const r = Math.max(18, Math.hypot(m.pts[0][0] - m.pts[2][0], m.pts[0][1] - m.pts[2][1]) * 0.5)
+    const st = status(p, now)
+    const c = st === 'fuori' ? '#9aa3ad' : room.config.mode === 'squadre' ? TEAMS[p.team].color : p.color
+    ctx.save()
+    ctx.globalAlpha = st === 'fuori' ? 0.6 : 0.92
+    ;[c, '#ffffff', c, '#ffffff', c].forEach((col, i) => {
+      ctx.fillStyle = col
+      ctx.beginPath()
+      ctx.arc(cx, cy, r * (1 - i * 0.2), 0, Math.PI * 2)
+      ctx.fill()
+    })
+    ctx.globalAlpha = 1
+    const fs = Math.max(13, Math.min(26, r * 0.45))
+    ctx.font = `800 ${fs}px 'Baloo 2 Variable', system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = 4
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'
+    ctx.fillStyle = '#ffffff'
+    const life = p.life <= 0 && now >= p.outUntil ? room.config.life : p.life
+    const lines = [p.name, st === 'fuori' ? 'fuori gioco' : '\u2665'.repeat(Math.max(0, life)) + (st === 'protetto' ? ' scudo' : ''), `${p.score} punti`]
+    lines.forEach((s, i) => {
+      const y = cy - r - fs * (lines.length - i - 0.6)
+      ctx.fillStyle = i === 1 && st !== 'fuori' ? '#ff6fae' : '#ffffff' // cuori rosa come nella HUD
+      ctx.strokeText(s, cx, y)
+      ctx.fillText(s, cx, y)
+    })
+    ctx.restore()
   }
 
   let hudKey = ''

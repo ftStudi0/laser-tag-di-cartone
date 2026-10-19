@@ -78,6 +78,8 @@ export function unlockAudio() {
   } catch {}
 }
 
+export const audioState = () => ctx?.state ?? 'spento'
+
 export function setVolume(v: number) {
   if (master) master.gain.value = v
 }

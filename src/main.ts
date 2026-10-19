@@ -17,8 +17,8 @@ const DURATIONS: [number, string][] = [[60, '1 min'], [90, '1½ min'], [120, '2 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
 
-// Primo tocco ovunque: sblocca l'audio (iPhone lo vuole da un gesto).
-addEventListener('pointerdown', unlockAudio, { capture: true })
+// Ogni tocco: sblocca o riprende l'audio. iPhone lo vuole da un gesto vero (touchend o click) e lo sospende quando apre la fotocamera.
+for (const ev of ['pointerdown', 'touchend', 'click']) addEventListener(ev, unlockAudio, { capture: true })
 // Niente zoom, niente menu contestuale, niente selezione.
 document.addEventListener('gesturestart', (e) => e.preventDefault())
 document.addEventListener('contextmenu', (e) => e.preventDefault())

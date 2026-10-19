@@ -7,7 +7,7 @@ import { connect, createRoom, type Net } from './net.ts'
 import { isReady, REFS, remaining, SHARED_SIZE, markerTaken as taken, MAX_MARKER, participants, status, teamScores, TEAMS, type Config, type Player, type Room, type Standing } from './rules.ts'
 import type { Theme } from './targets.ts'
 import { THEMES } from './themes.ts'
-import { mode, startSensors } from './sensors.ts'
+import { mode, sensors, startSensors } from './sensors.ts'
 import { saveSettings, settings } from './settings.ts'
 import { app, esc, goFullscreen, on, render } from './ui.ts'
 
@@ -220,6 +220,8 @@ function lobby(net: Net, r: Room, me: Player | undefined, isDir: boolean, leave:
   const resting = r.restUntil > net.serverNow()
   const link = `${location.origin}/?r=${r.code}`
   const iPlay = !!me && (!isDir || c.plays)
+  // pagina ricaricata: il server ricorda "pronto", ma qui i sensori vanno riaccesi con un tocco su Pronto
+  if (me?.ready.gun && !sensors.started) net.send({ t: 'ready', ready: { ...me.ready, gun: false } })
   const seg = (key: keyof Config, opts: [unknown, string][]) =>
     `<div class="seg">${opts.map(([v, l]) => `<button class="${c[key] === v ? 'on' : ''}" data-cfg="${key}" data-v='${JSON.stringify(v)}'>${l}</button>`).join('')}</div>`
 
@@ -302,7 +304,8 @@ function inGame(r: Room, rejoin: () => void) {
     <header class="bar"><h2>Partita in corso</h2></header>
     <p class="note">${MODES[r.config.mode]}. Rientra quando vuoi: il tuo punteggio è salvo.</p>
     <div class="row"><button class="big primary" data-rejoin>${icon('enter', 30)}Rientra in partita</button></div>`)
-  on('[data-rejoin]', rejoin)
+  // dopo aver ricaricato la pagina i sensori sono spenti: si riaccendono qui, dentro il tocco
+  on('[data-rejoin]', async () => (await startSensors(), rejoin()))
 }
 
 function results(r: Room, s: Standing[], toLobby: () => void) {
