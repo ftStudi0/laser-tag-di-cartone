@@ -657,16 +657,29 @@ input[type='range']::-moz-range-thumb {
 .game:active {
   transform: translateY(2px);
 }
-/* in verticale: 3 + 2 a tutta larghezza, senza buchi */
+/* in verticale le file di tessere scorrono di lato fino al bordo dello schermo:
+   due tessere intere e un pezzo della terza, così si capisce che c'è dell'altro */
 @media (max-width: 560px) {
-  .games {
-    grid-template-columns: repeat(6, 1fr);
+  .strip {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    margin-left: calc(-1 * var(--sl));
+    margin-right: calc(-1 * var(--sr));
+    padding: 4px var(--sr) 12px var(--sl);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: var(--sl);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
-  .game {
-    grid-column: span 2;
+  .strip::-webkit-scrollbar {
+    display: none;
   }
-  .game:nth-child(n + 4) {
-    grid-column: span 3;
+  .strip > * {
+    flex: 0 0 calc((100vw - var(--sl) - 2 * 12px) / 2.3);
+    min-width: 0;
+    scroll-snap-align: start;
   }
 }
 .two {

@@ -1,5 +1,6 @@
 // Traduzioni inglesi: chiave = testo italiano esatto passato a t().
 export default {
+  'Personaggi ritagliati dal cartone (spegnilo se il gioco va a scatti)': 'Cardboard cut-out characters (turn this off if the game stutters)',
   'Facile': 'Easy',
   'Media': 'Medium',
   'Difficile': 'Hard',

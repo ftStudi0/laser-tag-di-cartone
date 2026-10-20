@@ -1,6 +1,7 @@
 import '@fontsource-variable/baloo-2'
 import './style.css'
 import { setVolume, unlockAudio } from './audio.ts'
+import { cutout } from './cardboard.ts'
 import { bandit, loadDuelArcade, loadDuelRecord, playDuel, type DuelResult } from './duel.ts'
 import { drawClay, drawDuck, fmt, playSolo, type Result } from './game.ts'
 import { lang, t } from './i18n.ts'
@@ -136,7 +137,7 @@ function soloSetup() {
   const oneMinute = a ? '' : ` ${t('Una partita dura un minuto.')}`
   render(`
     <header class="bar"><button class="btn small" data-back>${icon('back', 20)}${t('Menu')}</button><h2>${t('Gioca da sola/o')}</h2></header>
-    <div class="games">${(Object.keys(SOLO) as Solo[]).map((k) => `<button class="game ${k === g ? 'on' : ''}" data-solo="${k}" style="--g:${SOLO_COLOR[k]}" aria-pressed="${k === g}"><canvas width="256" height="160" aria-hidden="true"></canvas>${SOLO[k]}</button>`).join('')}</div>
+    <div class="games strip">${(Object.keys(SOLO) as Solo[]).map((k) => `<button class="game ${k === g ? 'on' : ''}" data-solo="${k}" style="--g:${SOLO_COLOR[k]}" aria-pressed="${k === g}"><canvas width="256" height="160" aria-hidden="true"></canvas>${SOLO[k]}</button>`).join('')}</div>
     <h3>${t('Modalità')}</h3>
     <div class="seg"><button class="${a ? '' : 'on'}" data-arcade="0">${t('Normale')}</button><button class="${a ? 'on' : ''}" data-arcade="1">${t('Arcade')}</button></div>
     ${a ? `<p class="note">${g === 'duello' ? t('Si va avanti finché non sbagli: ogni duello vinto è un punto, e Baffone diventa sempre più svelto.') : t('Hai {n} colpi e ne perdi uno solo quando sbagli. Si gioca finché ti restano colpi.', { n: ARCADE.shots })}</p>` : ''}
@@ -156,7 +157,7 @@ function soloSetup() {
     <div class="seg">${(Object.keys(DIFFS) as Diff[]).map((d) => `<button class="${d === settings.diff ? 'on' : ''}" data-diff="${d}">${DIFFS[d]}</button>`).join('')}</div>` : `
     ${g === 'chiosco' ? `<p class="note">${a ? t('Come al luna park: davanti a te scorrono tre file di bersagli, alla fine vinci un premio.') : t('Come al luna park: davanti a te scorrono tre file di bersagli. Hai {n} colpi e un minuto, alla fine vinci un premio.', { n: BOOTH.shots })}</p>` : ''}
     <h3>${t('Tema')}</h3>
-    <div class="row">${themes
+    <div class="row strip">${themes
       .map((th) => `<button class="card ${th === settings.theme ? 'on' : ''}" data-theme="${th}"><canvas width="240" height="150" aria-hidden="true"></canvas>${THEMES[th]}</button>`)
       .join('')}</div>
     <div class="two"><div>
@@ -186,16 +187,23 @@ function soloSetup() {
     saveSettings()
     soloSetup()
   })
+  // nelle strisce che scorrono di lato, la scelta fatta resta in vista
+  app.querySelectorAll<HTMLElement>('.strip').forEach((st) => {
+    const on = st.querySelector<HTMLElement>('.on')
+    if (on) st.scrollLeft = on.offsetLeft - st.offsetLeft - parseFloat(getComputedStyle(st).paddingLeft)
+  })
   app.querySelectorAll<HTMLButtonElement>('[data-solo]').forEach((b) => {
     const c = b.querySelector('canvas')!.getContext('2d')!
     c.scale(2, 2)
-    SOLO_ART[b.dataset.solo as Solo](c)
+    cutout(c, 0, 0, { left: 0, top: 0, right: 128, bottom: 80 }, SOLO_ART[b.dataset.solo as Solo])
   })
   app.querySelectorAll<HTMLButtonElement>('[data-theme]').forEach((b) => {
     const c = b.querySelector('canvas')!.getContext('2d')!
     c.scale(2, 2) // disegno nitido sugli schermi ad alta densità
-    drawTarget(c, b.dataset.theme as Theme, 'normale', 1, 40, 38, 24, 0)
-    drawTarget(c, b.dataset.theme as Theme, 'dorato', 0, 86, 40, 16, 0.5)
+    cutout(c, 0, 0, { left: 0, top: 0, right: 120, bottom: 75 }, (g) => {
+      drawTarget(g, b.dataset.theme as Theme, 'normale', 1, 40, 38, 24, 0)
+      drawTarget(g, b.dataset.theme as Theme, 'dorato', 0, 86, 40, 16, 0.5)
+    })
   })
   const pick = (sel: string, key: 'theme' | 'diff' | 'duration' | 'z3d' | 'heat', parse: (v: string) => any) =>
     on(sel, (el) => {
@@ -378,6 +386,7 @@ function settingsScreen() {
     <label class="field"><span>${t('Altezza del fucile da terra: {v}', { v: `<b data-ghv>${settings.gunH.toFixed(1)} m</b>` })}</span>
       <input type="range" min="0.8" max="1.7" step="0.05" value="${settings.gunH}" data-gh>
       <small class="note">${t('Serve agli zombi per camminare sul pavimento. Misura da terra al fucile quando lo tieni in mano.')}</small></label>
+    <label class="check"><input type="checkbox" data-cardboard ${settings.cardboard ? 'checked' : ''}> ${t('Personaggi ritagliati dal cartone (spegnilo se il gioco va a scatti)')}</label>
     <label class="check"><input type="checkbox" data-debug ${settings.debug ? 'checked' : ''}> ${t('Mostra i dati di diagnostica durante il gioco')}</label>
     <div class="row">
       <button class="btn" data-reset>${t('Azzera la calibrazione')}</button>
@@ -407,6 +416,11 @@ function settingsScreen() {
   gh.addEventListener('input', () => {
     settings.gunH = Number(gh.value)
     app.querySelector('[data-ghv]')!.textContent = `${settings.gunH.toFixed(1)} m`
+    saveSettings()
+  })
+  const cb = app.querySelector<HTMLInputElement>('[data-cardboard]')!
+  cb.addEventListener('change', () => {
+    settings.cardboard = cb.checked
     saveSettings()
   })
   const dbg = app.querySelector<HTMLInputElement>('[data-debug]')!

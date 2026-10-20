@@ -1,4 +1,5 @@
 import { play } from './audio.ts'
+import { cutout } from './cardboard.ts'
 import { icon } from './icons.ts'
 import { D, dirFrom, forward, project, screenDir, type Vec3 } from './math.ts'
 import { mode, sensors } from './sensors.ts'
@@ -379,7 +380,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
             const ang = Math.acos(Math.max(-1, Math.min(1, dot(fwd, geo(tg).dir))))
             if (!nearest || ang < nearest.a) nearest = { a: ang, d: screenDir(sensors.q, geo(tg).dir) }
           }
-          drawDuck(ctx, p.x, p.y, r, gameT - tg.born, tg.kind, d.face, d.flee > 0)
+          cutout(ctx, p.x, p.y, { left: -1.75 * r, top: -1.5 * r, right: 1.75 * r, bottom: 0.75 * r }, (c) => drawDuck(c, 0, 0, r, gameT - tg.born, tg.kind, d.face, d.flee > 0))
           continue
         }
         if (tg.hitAt !== undefined && (!zombi || tg.caught || pop >= 1)) continue
@@ -406,8 +407,11 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
         const fly = clay ? (gameT >= end ? 1 : 0) : Math.max(0, (gameT - end) / FLY)
         ctx.save()
         ctx.globalAlpha = 1 - fly
-        if (clay) drawClay(ctx, p.x, p.y, r, gameT - tg.born, tg.kind)
-        else drawTarget(ctx, opts.theme, tg.kind, tg.tint, p.x, p.y - fly * r * 2, r * (0.6 + 0.4 * popIn), t)
+        if (clay) cutout(ctx, p.x, p.y, { left: -1.1 * r, top: -0.7 * r, right: 1.1 * r, bottom: 0.8 * r }, (c) => drawClay(c, 0, 0, r, gameT - tg.born, tg.kind))
+        else {
+          const R = r * (0.6 + 0.4 * popIn)
+          cutout(ctx, p.x, p.y - fly * r * 2, { left: -1.7 * R, top: -1.6 * R, right: 1.7 * R, bottom: 1.9 * R }, (c) => drawTarget(c, opts.theme, tg.kind, tg.tint, 0, 0, R, t))
+        }
         ctx.restore()
       }
       if (zombi) drawZombies(zs, v, t)
@@ -450,7 +454,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       ctx.globalAlpha = 1 - pop
       ctx.translate(feet.x, feet.y)
       ctx.scale(1 - pop, 1 - pop)
-      drawZombie(ctx, 0, 0, px, t, tg.kind, tg.tint, Math.max(0.3, (tg.v ?? 0) / 0.4))
+      cutout(ctx, 0, 0, { left: -0.65 * px, top: -1.12 * px, right: 0.65 * px, bottom: 0.08 * px }, (c) => drawZombie(c, 0, 0, px, t, tg.kind, tg.tint, Math.max(0.3, (tg.v ?? 0) / 0.4)))
       ctx.restore()
     }
   }
@@ -488,7 +492,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       const up = Math.min(1, dog / 0.25, (1.6 - dog) / 0.25) // sale, ride, riscende
       const p = at(0, top + (6 * up - 5) * D)
       const p2 = at(0, top + 5 * D)
-      if (p && p2) drawDog(ctx, p.x, p.y, Math.abs(p.y - p2.y) * 0.9, t)
+      if (p && p2) {
+        const s = Math.abs(p.y - p2.y) * 0.9
+        cutout(ctx, p.x, p.y, { left: -0.65 * s, top: -1.05 * s, right: 0.65 * s, bottom: 0.05 * s }, (c) => drawDog(c, 0, 0, s, t))
+      }
     }
     ctx.save()
     const n = 24

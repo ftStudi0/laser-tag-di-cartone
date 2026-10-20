@@ -8,6 +8,7 @@ import {
 } from './stage.ts'
 import type { Diff } from './targets.ts'
 import { onTrigger } from './trigger.ts'
+import { cutout } from './cardboard.ts'
 import { t } from './i18n.ts'
 
 // Duello nel Far West contro il bandito Baffone: alla campana spunta, e bisogna colpirlo prima che tiri fuori la bandierina.
@@ -187,14 +188,14 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
 
     ctx.clearRect(0, 0, size.w, size.h)
     const show = phase === 'duello' || (phase === 'esito' && (look !== 'pronto' || ladyLook !== 'pronto' || who === 'rosina'))
-    if (show && hasLady()) drawFigure(now, ladyAz, (h, t) => lady(ctx, h, ladyLook, t))
-    if (show && hasBandit()) drawFigure(now, az, (h, t) => bandit(ctx, h, look, t))
+    if (show && hasLady()) drawFigure(now, ladyAz, (c, h, t) => lady(c, h, ladyLook, t))
+    if (show && hasBandit()) drawFigure(now, az, (c, h, t) => bandit(c, h, look, t))
     drawFx()
     const [ax, ay] = aimPoint()
     drawCrosshair(ax, ay, phase === 'duello' && hasBandit() && under(az, ax, ay), settings.color)
   }
 
-  function drawFigure(now: number, a: number, draw: (h: number, t: number) => void) {
+  function drawFigure(now: number, a: number, draw: (c: CanvasRenderingContext2D, h: number, t: number) => void) {
     const h = dirFrom(yaw0 + a, 0)
     const v = view()
     const feet = project(sensors.q, [h[0] * DIST, -H, h[2] * DIST], v)
@@ -205,7 +206,9 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
     ctx.save()
     ctx.translate(feet.x, feet.y)
     ctx.scale(up, up)
-    draw(feet.y - head.y, (now - lookAt) / 1000)
+    const fh = feet.y - head.y, ft = (now - lookAt) / 1000
+    // sagoma di cartone: il riquadro largo abbastanza per cappello, ombrellino e bandierina
+    cutout(ctx, 0, 0, { left: -0.55 * fh, top: -1.2 * fh, right: 1.05 * fh, bottom: 0.06 * fh }, (c) => draw(c, fh, ft))
     ctx.restore()
   }
 
@@ -229,7 +232,7 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
 }
 
 // La signora Rosina: vestito a campana, cappellino col fiore e ombrellino. Passa di lì: non va colpita.
-function lady(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'offesa', time: number) {
+export function lady(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'offesa', time: number) {
   const u = h / 100
   c.lineJoin = 'round'
   c.lineWidth = Math.max(1.5, u * 1.2)
