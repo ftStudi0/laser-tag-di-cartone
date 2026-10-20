@@ -7,6 +7,8 @@ import { icon } from './icons.ts'
 import { createGame, joinScreen } from './lobby.ts'
 import { aimTest, calibrateAim, calibrateFov, compassTest, triggerTest } from './prepare.ts'
 import { printScreen } from './print.ts'
+import gunPdf from '../docs/laser-tag-fucile-template.pdf?url'
+import gun3d from '../docs/fucile-3d.html?url'
 import { mode, MODE_TEXT, startSensors } from './sensors.ts'
 import { COLORS, loadRecords, MODELS, recordKey, saveSettings, settings, type RecGame } from './settings.ts'
 import { ARCADE, BOOTH, type Diff, type Theme } from './targets.ts'
@@ -301,6 +303,11 @@ function prepare() {
     </div>
     ${m === 'nessuno' ? '<p class="note">Questo telefono non sa quando ti giri: per i giochi a bersagli servirà la modalità Bersagli sui muri. Il laser tag funzionerà normalmente.</p>' : ''}
     ${m === 'bussola' ? '<p class="note">Senza giroscopio uso la bussola: è più lenta e i bersagli sono più grandi. Fai la prova del giro completo.</p>' : ''}
+    <div class="build">
+      <div><b>Costruisci il fucile</b><small>Il progetto da stampare su A4 al 100%, con le parti da ritagliare e i passaggi di montaggio.</small></div>
+      <a class="btn primary" href="${gunPdf}" download="fucile-di-cartone.pdf">${icon('printer', 20)}Scarica il PDF</a>
+      <a class="btn" href="${gun3d}" target="_blank" rel="noopener">Modello 3D</a>
+    </div>
     <label class="field">Telefono
       <select data-model>${Object.entries(MODELS).map(([k, [l]]) => `<option value="${k}" ${k === settings.model ? 'selected' : ''}>${l}</option>`).join('')}</select>
     </label>

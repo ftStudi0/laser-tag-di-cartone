@@ -738,6 +738,33 @@ input[type='range']::-moz-range-thumb {
   width: 24px;
   height: 24px;
 }
+.build {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin: 10px 0;
+  padding: 10px 14px;
+  background: var(--card);
+  border-radius: 22px;
+  box-shadow: var(--clay);
+}
+.build > div {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+}
+.build small {
+  color: var(--muted);
+  font-size: 14px;
+}
+.build a {
+  text-decoration: none;
+  color: var(--ink);
+}
+.build a.primary {
+  color: #fff;
+}
 .steps {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -1393,18 +1420,20 @@ input[type='range']::-moz-range-thumb {
   #print {
     display: block;
   }
-  /* Altezza libera: se il browser o la stampante aggiungono margini, un'altezza fissa sborda e crea pagine vuote. */
+  /* Altezza libera e circa 230 mm in tutto: l'iPhone stampa con margini larghi e spesso su Letter (279 mm),
+     e un foglio che sborda anche di poco lascia una pagina vuota dopo ogni marker. */
   .sheet {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 12mm;
     break-inside: avoid;
     break-after: page;
+    page-break-after: always;
     color: #000;
   }
   .sheet:last-child {
     break-after: auto;
+    page-break-after: auto;
   }
   /* 8 celle in tutto: 6 di marker nero più una cella bianca per lato. Nero di 144 mm. */
   .mk svg {
@@ -1414,18 +1443,20 @@ input[type='range']::-moz-range-thumb {
     shape-rendering: crispEdges;
   }
   .sheet-num {
-    font-size: 70pt;
+    font-size: 48pt;
     font-weight: 800;
     line-height: 1;
-    margin-top: 4mm;
+    margin-top: 3mm;
   }
   .sheet-name {
-    font-size: 34pt;
+    font-size: 26pt;
     font-weight: 800;
+    line-height: 1.1;
   }
   .sheet-note {
-    margin-top: 6mm;
+    margin-top: 3mm;
     font-size: 10pt;
+    line-height: 1.2;
   }
 }
 

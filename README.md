@@ -1,103 +1,101 @@
 # Laser tag di cartone
 
-Giochi di tiro in realtà aumentata da giocare in casa con il telefono montato su un fucile di cartone.
+Giochi di tiro in realtà aumentata da fare in casa. Il telefono si monta su un fucile di cartone fatto a mano: la fotocamera inquadra la stanza, al centro dello schermo c'è il mirino e il grilletto è una leva di cartone che tocca lo schermo.
 
-## Giochi
+È una web app: non serve installare niente dagli store e non servono account. È nata per due bambine di 9 e 10 anni: un adulto costruisce i fucili e fa da regista.
 
-1. **Tiro al bersaglio**: da sole, bersagli virtuali intorno nella stanza. Funziona offline.
-   - **Chiosco del luna park**: tre file di bersagli che scorrono davanti, 20 colpi e un premio alla fine.
-   - **Anatre al volo**: come Duck Hunt, le anatre escono dall'erba e volano a zig zag; se scappano il cane ride.
-   - **Tiro al piattello**: i piattelli volano ad arco da un lato all'altro, vanno colpiti prima che ricadano.
-   - **Duello nel Far West**: alla campana spunta il bandito Baffone, va colpito prima che dalla sua rivoltella giocattolo esca la bandierina BANG. Vince chi arriva a 3. In Difficile passa anche la signora Rosina, che non va colpita.
-   - **Arcade** (per tutti i giochi da soli): si perde un colpo solo quando si sbaglia; nel duello si va avanti finché non si sbaglia.
-2. **Sfida a bersagli**: multiplayer, stessa sequenza di bersagli per tutte, classifica live.
-3. **Bersagli condivisi**: multiplayer, gli stessi bersagli per tutte, chi colpisce per prima vince il punto.
-4. **Laser tag**: ci si colpisce a vicenda mirando ai marker stampati sul petto e sulla schiena.
+![Il menu del gioco](docs/img/menu.png)
 
-Un telefono fa da **regista**: crea la partita, sceglie il gioco e fa partire tutti insieme.
+## Cosa si può fare
 
-## Contenuto del repo
+**Da sole o da soli**, anche senza rete:
 
-| Percorso | Cosa contiene |
+- **Bersagli intorno**: palloncini, stelle, mostriciattoli, lattine o zombi buffi compaiono nella stanza, davanti, di lato e dietro. Il gattino col cuore non si colpisce.
+- **Chiosco del luna park**: tre file di bersagli che scorrono, 20 colpi e un premio alla fine.
+- **Tiro al piattello**: i piattelli volano ad arco da un lato all'altro e vanno presi prima che ricadano.
+- **Anatre al volo**: come Duck Hunt, le anatre escono dall'erba e volano a zig zag. Se scappano, il cane se la ride.
+- **Duello nel Far West**: al suono della campana spunta il bandito Baffone, e va colpito prima che dalla sua rivoltella giocattolo esca la bandierina BANG. In Difficile passa anche la signora Rosina, che non va colpita.
+- **Arcade**, per tutti i giochi: si perde un colpo solo quando si sbaglia e si va avanti finché ne restano.
+
+**In gruppo**, con un telefono che fa da regista:
+
+- **Laser tag**: ci si colpisce a vicenda mirando ai marker stampati sul petto e sulla schiena. Tutti contro tutti o a squadre, con i cuori, il "fuori gioco" e il rientro.
+- **Sfida a bersagli**: la stessa sequenza di bersagli per tutti e la classifica in diretta.
+- **Bersagli condivisi**: gli stessi bersagli nello stesso punto della stanza per tutti, e chi colpisce per primo prende il punto.
+
+Il regista crea la partita, mostra un codice di 4 lettere e un QR, sceglie il gioco e fa partire tutti insieme. Può giocare anche lui o fare solo da arbitro, per esempio con il telefono di un genitore.
+
+![La scelta del gioco](docs/img/gioca-da-sola.png)
+
+## Costruire il fucile
+
+Il progetto del fucile si scarica anche dall'app, nella schermata **Prepara il fucile**.
+
+| File | Cosa contiene |
 |---|---|
-| `docs/PROMPT.md` | Specifica completa da dare a Claude Code |
-| `docs/laser-tag-fucile-template.pdf` | Template del fucile da stampare su A4 al 100% |
-| `docs/fucile-3d.html` | Modello 3D interattivo del fucile, si apre nel browser |
-| `docs/MATERIALI.md` | Lista dei materiali per costruire i fucili |
-| `CLAUDE.md` | Istruzioni per Claude Code |
+| [`docs/laser-tag-fucile-template.pdf`](docs/laser-tag-fucile-template.pdf) | Le parti da stampare su A4 al 100%, da ricalcare sul cartone, e i passaggi di montaggio |
+| [`docs/fucile-3d.html`](docs/fucile-3d.html) | Modello 3D interattivo, si apre nel browser |
+| [`docs/MATERIALI.md`](docs/MATERIALI.md) | Lista dei materiali per tre fucili |
+| [`docs/FUCILE.md`](docs/FUCILE.md) | Le cose del fucile che contano per il gioco |
 
-## Stack
+Il fucile tiene telefoni fino a 175 x 82 x 13 mm con la cover. Il taglierino e la colla a caldo li usa un adulto.
 
-- Frontend: Vite + TypeScript, Three.js, js-aruco2 in un Web Worker, PWA.
-- Server: Cloudflare Workers + Durable Objects (piano gratuito), WebSocket con ibernazione.
-- Nessun database, nessun account.
+## Privacy e sicurezza
 
-## Provare dal telefono
+- Le immagini della fotocamera non lasciano mai il telefono: i marker si riconoscono sul telefono stesso, in un Web Worker.
+- Al server arrivano solo eventi di gioco, per esempio "colpito il marker 3". Non ci sono account e non si salva niente oltre la partita. La stanza si cancella da sola 30 minuti dopo che è rimasta vuota.
+- I record dei giochi da soli restano sul telefono.
+- Si gioca camminando, non correndo: il gioco lo ricorda se sente scossoni. Il linguaggio è non violento: "colpito" e "fuori gioco", mai altro.
+
+## Telefoni
+
+Provato su iPhone 17 Pro, iPhone 14 Pro, Xiaomi Redmi A5 (bussola senza giroscopio) e Samsung Galaxy A02s come regista. Per i giochi a bersagli serve un telefono che sappia quando ti giri (giroscopio, o almeno la bussola). Il laser tag usa solo la fotocamera e funziona su tutti.
+
+## Provarlo sul tuo computer
 
 Serve Node 22 o superiore.
 
 ```sh
 npm install
-npm run dev        # server HTTPS con certificato locale, anche sulla rete Wi-Fi
-npm run check      # controllo della logica (quaternioni, bersagli, record, regole del laser tag)
+npm run dev        # server HTTPS locale, raggiungibile anche dalla rete Wi-Fi
+npm run check      # controllo della logica (orientamento, bersagli, record, regole del laser tag)
 ```
 
-`npm run dev` fa girare in locale anche il server delle partite (Worker e Durable Object, tramite il plugin Cloudflare per Vite): non serve un altro comando come `wrangler dev`.
+`npm run dev` fa girare in locale anche il server delle partite (Worker e Durable Object, con il plugin Cloudflare per Vite).
 
-Fotocamera e sensori funzionano solo in HTTPS. Due modi per aprire l'app dal telefono:
+Fotocamera e sensori funzionano solo in HTTPS. Per aprire il gioco dal telefono:
 
-1. **Tunnel HTTPS (consigliato, funziona sempre)**. Installa una volta `brew install cloudflared`, poi con `npm run dev` acceso:
+1. **Tunnel HTTPS (consigliato)**: installa una volta `cloudflared` (`brew install cloudflared`), poi con `npm run dev` acceso:
    ```sh
    cloudflared tunnel --url https://localhost:5173 --no-tls-verify
    ```
-   Apri sul telefono l'indirizzo `https://...trycloudflare.com` che compare. Non serve un account. Tutti i telefoni della partita aprono lo stesso indirizzo.
-2. **Stessa rete Wi-Fi**: apri l'indirizzo `Network` stampato da `npm run dev` (per esempio `https://192.168.1.20:5173`) e accetta l'avviso sul certificato.
+   Apri sul telefono l'indirizzo `https://...trycloudflare.com` che compare. Non serve un account.
+2. **Stessa rete Wi-Fi**: apri l'indirizzo `Network` stampato da `npm run dev` e accetta l'avviso sul certificato.
 
-Per provare la PWA e il funzionamento senza rete usa la build: `npm run build && npm run preview`, poi lo stesso tunnel sulla porta 4173. Su iPhone: Condividi, Aggiungi alla schermata Home, e apri il gioco dall'icona (schermo intero e orizzontale).
+Su iPhone conviene aggiungerlo alla schermata Home (Condividi, poi Aggiungi alla schermata Home): così si gioca a schermo intero.
 
-## Pubblicare su Cloudflare (piano gratuito)
+## Pubblicarlo gratis su Cloudflare
 
-Una volta sola, accedi al tuo account Cloudflare:
-
-```sh
-npx wrangler login
-```
-
-Poi, ogni volta che vuoi aggiornare il gioco:
+Serve un account Cloudflare gratuito.
 
 ```sh
-npm run deploy     # build e wrangler deploy
+npx wrangler login   # una volta sola
+npm run deploy       # build e pubblicazione
 ```
 
-Il gioco va su `https://laser-tag-cartone.<tuo-sottodominio>.workers.dev`. Il Durable Object usa l'archivio SQLite (`new_sqlite_classes` in `wrangler.jsonc`), l'unico permesso nel piano gratuito. Attenzione: pubblicare una nuova versione scollega chi sta giocando in quel momento.
+Il gioco va su `https://laser-tag-cartone.<tuo-sottodominio>.workers.dev`. Il Durable Object usa l'archivio SQLite, l'unico disponibile nel piano gratuito. Pubblicare una nuova versione scollega chi sta giocando in quel momento.
 
-I tipi del Worker (`worker/worker-configuration.d.ts`) si rigenerano da soli a ogni build; a mano: `npm run types`.
+## Come è fatto
 
-## Partite in gruppo
+- **Frontend**: Vite e TypeScript senza framework, Three.js per gli zombi in 3D, js-aruco2 per i marker, PWA che funziona anche offline.
+- **Server**: un Cloudflare Worker con un Durable Object per ogni partita, WebSocket con ibernazione. Le regole del laser tag stanno in `src/rules.ts`, condivise tra telefono e server, e il server ha sempre l'ultima parola.
+- **Nessun database** e nessun account.
 
-- Il regista sceglie tra:
-  - **Laser tag**;
-  - **Sfida a bersagli**: stessi bersagli per tutti, ognuno spara ai suoi, classifica in diretta, anche a squadre;
-  - **Bersagli condivisi**: all'inizio tutti puntano insieme un riferimento (la TV, la porta...), poi i bersagli sono nello stesso posto per tutti e chi colpisce prima lo prende.
+| Percorso | Cosa contiene |
+|---|---|
+| `src/` | Il gioco: menu, giochi, sensori, riconoscimento dei marker, lobby |
+| `worker/` | Il server delle partite |
+| `docs/PROMPT.md` | La specifica completa da cui è nato il progetto |
+| `CLAUDE.md` | Le istruzioni per Claude Code |
 
-  I due giochi a bersagli hanno bisogno del giroscopio.
-- Per il laser tag stampa i marker da **Stampa i marker** (un foglio A4 per giocatore, due copie: petto e schiena). Stampa al 100%.
-- Un telefono tocca **Crea partita** e diventa il regista: mostra il codice di 4 lettere e il QR. Può giocare anche lui o fare solo da arbitro (plancia con punteggi e comandi).
-- Gli altri toccano **Entra in partita**, scrivono il codice (o inquadrano il QR), scelgono il numero del proprio marker e toccano **Ho il fucile pronto**.
-- Al server arrivano solo eventi di gioco (numero del marker colpito, stato). Le immagini della fotocamera restano sul telefono. La stanza si cancella da sola 30 minuti dopo che è rimasta vuota.
-
-## Come partire
-
-1. Apri questa cartella con Claude Code.
-2. Chiedi: "Leggi docs/PROMPT.md e inizia la milestone 1".
-3. A fine milestone prova sul telefono quello che Claude Code ti indica.
-
-Per pubblicare il gioco serve un account Cloudflare gratuito.
-
-## Milestone
-
-1. Tiro al bersaglio (nessun server)
-2. Regista e Sfida a bersagli
-3. Bersagli condivisi
-4. Laser tag
-5. Rifinitura, Bersagli sui muri, test su tutti i telefoni
+Il gioco è stato scritto con [Claude Code](https://claude.com/claude-code), partendo da `docs/PROMPT.md` e procedendo una milestone alla volta, provando ogni passo sui telefoni veri.
