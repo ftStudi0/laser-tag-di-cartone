@@ -8,7 +8,7 @@ Giochi di tiro in realtà aumentata da fare in casa. Il telefono si monta su un 
 
 ![Laser tag: si colpisce un'amica con il marker addosso](docs/img/demo.gif)
 
-Il [video completo](docs/video/demo.mp4) (70 secondi) mostra il menu, una partita di laser tag tra due telefoni, le anatre al volo, il chiosco del luna park e il duello nel Far West. È registrato sul computer, con una stanza disegnata e un'amica di cartone al posto della fotocamera.
+Il [video completo](docs/video/demo.mp4) (80 secondi) mostra il menu, una partita di laser tag tra due telefoni, le anatre al volo, il chiosco del luna park e il duello nel Far West. È registrato sul computer, con una stanza disegnata e un'amica di cartone al posto della fotocamera. Anche i personaggi sono sagome di cartone.
 
 ![Il menu del gioco](docs/img/menu.png)
 

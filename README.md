@@ -8,7 +8,7 @@ It is a web app: nothing to install from an app store and no accounts. It speaks
 
 ![Laser tag: tagging a friend wearing her marker](docs/img/demo.gif)
 
-The [full video](docs/video/demo.mp4) (70 seconds) shows the menu, a laser tag game between two phones, flying ducks, the fairground stall and the Wild West duel. It was recorded on a computer with the app in Italian, using a drawn room and a cardboard friend instead of the camera.
+The [full video](docs/video/demo.mp4) (80 seconds) shows the menu, a laser tag game between two phones, flying ducks, the fairground stall and the Wild West duel. It was recorded on a computer with the app in Italian, using a drawn room and a cardboard friend instead of the camera. The characters are cardboard cut-outs too.
 
 ![The game menu](docs/img/menu.png)
 
