@@ -3,6 +3,9 @@ import { MARKER_M } from './markers.ts'
 import { MAX_MARKER } from './rules.ts'
 import { saveSettings, settings } from './settings.ts'
 import { app, esc, on, render } from './ui.ts'
+import { lang, t } from './i18n.ts'
+
+const dec = (x: number) => (lang === 'it' ? x.toFixed(1).replace('.', ',') : x.toFixed(1))
 
 // Stampa i marker: un foglio A4 per giocatore, con il marker grande, il nome e il numero.
 // Si stampa dal browser (anche "Salva come PDF"): niente librerie per i PDF.
@@ -16,16 +19,15 @@ export async function printScreen(back: () => void) {
   })()
   if (settings.name && !names[settings.marker - 1]) names[settings.marker - 1] = settings.name
   render(`
-    <header class="bar"><button class="btn small" data-back>${icon('back', 20)}Menu</button><h2>Stampa i marker</h2></header>
-    <p class="note">Scrivi il nome accanto al numero di ogni giocatore. Ogni foglio va stampato <b>due volte</b>: uno sul petto e uno sulla schiena.
-      Stampa al 100% (senza "adatta alla pagina") e non plastificarlo lucido, perché i riflessi confondono la fotocamera.</p>
+    <header class="bar"><button class="btn small" data-back>${icon('back', 20)}${t('Menu')}</button><h2>${t('Stampa i marker')}</h2></header>
+    <p class="note">${t('Scrivi il nome accanto al numero di ogni giocatore. Ogni foglio va stampato <b>due volte</b>: uno sul petto e uno sulla schiena. Stampa al 100% (senza "adatta alla pagina") e non plastificarlo lucido, perché i riflessi confondono la fotocamera.')}</p>
     <div class="print-list">${Array.from({ length: 8 }, (_, i) => `
       <label class="print-row"><span class="num">${i + 1}</span>
-        <input data-pn="${i}" maxlength="12" placeholder="Nome" value="${esc(names[i] ?? '')}" autocomplete="off">
-        <span class="mine-tag ${settings.marker === i + 1 ? 'on' : ''}" data-mine="${i + 1}">${settings.marker === i + 1 ? 'il mio' : 'è il mio'}</span>
+        <input data-pn="${i}" maxlength="12" placeholder="${t('Nome')}" value="${esc(names[i] ?? '')}" autocomplete="off">
+        <span class="mine-tag ${settings.marker === i + 1 ? 'on' : ''}" data-mine="${i + 1}">${settings.marker === i + 1 ? t('il mio') : t('è il mio')}</span>
       </label>`).join('')}</div>
-    <p class="note">Si stampano i numeri con un nome. Se non scrivi nessun nome, si stampano tutti e 8. Ci sono numeri fino a ${MAX_MARKER}.</p>
-    <div class="cta-bar"><button class="big primary go" data-print>${icon('printer', 30)}Stampa</button></div>
+    <p class="note">${t('Si stampano i numeri con un nome. Se non scrivi nessun nome, si stampano tutti e 8. Ci sono numeri fino a {max}.', { max: MAX_MARKER })}</p>
+    <div class="cta-bar"><button class="big primary go" data-print>${icon('printer', 30)}${t('Stampa')}</button></div>
   `)
   on('[data-back]', back)
   const inputs = [...app.querySelectorAll<HTMLInputElement>('[data-pn]')]
@@ -52,7 +54,7 @@ export async function printScreen(back: () => void) {
           <div class="mk">${dict.generateSVG(num - 1)}</div>
           <div class="sheet-num">${num}</div>
           <div class="sheet-name">${esc(name)}</div>
-          <div class="sheet-note">Laser tag di cartone. Stampa due copie: petto e schiena. Quadrato nero di ${(MARKER_M * 100).toFixed(1).replace(".", ",")} cm.</div>
+          <div class="sheet-note">${t('Laser tag di cartone. Stampa due copie: petto e schiena. Quadrato nero di {cm} cm.', { cm: dec(MARKER_M * 100) })}</div>
         </section>`)
       .join('')
     let el = document.getElementById('print')

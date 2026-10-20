@@ -1,5 +1,7 @@
 # Materiali per 3 fucili
 
+[English](MATERIALS.md)
+
 ## Cartone e carta
 
 - Cartone ondulato da 3-4 mm: 3 o 4 scatole medie. I fogli A4 sono troppo piccoli, il fianco è lungo 38 cm.

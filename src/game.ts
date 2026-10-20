@@ -11,6 +11,7 @@ import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
 import { heat, onTrigger } from './trigger.ts'
 import { esc } from './ui.ts'
+import { t } from './i18n.ts'
 
 export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean; booth?: boolean; clay?: boolean; ducks?: boolean; arcade?: boolean } // duration 0 = allenamento; heat: il fucile si scalda; booth: chiosco del luna park; clay: tiro al piattello; ducks: anatre al volo
 export type Result = GameOpts & { score: number; shots: number; good: number; best: number; rank: number }
@@ -64,7 +65,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
 
   // nella Sfida la direzione zero si prende al via, nei condivisi puntando tutti lo stesso riferimento
   let phase: 'mira' | 'via' | 'gioco' | 'fine' = multi && !shared ? 'via' : 'mira'
-  const aimText = shared ? `Tutti insieme: puntate ${shared.ref} e premete il grilletto` : 'Punta davanti a te e premi il grilletto'
+  const aimText = shared ? t('Tutti insieme: puntate {ref} e premete il grilletto', { ref: shared.ref }) : t('Punta davanti a te e premi il grilletto')
   let paused = false
   let recenter = false
   let gameT = 0
@@ -83,15 +84,15 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   hud.innerHTML = `
     <div class="hud-tl pill" data-ammo></div>
     <div class="hud-tr">
-      ${!multi || multi.isDir ? `<button class="hud-btn" data-a="pausa" aria-label="Pausa">${icon('pause')}</button>` : ''}
-      <button class="hud-btn" data-a="ricentra" aria-label="Ricentra">${icon('recenter')}</button>
-      <button class="hud-btn" data-a="esci" aria-label="Esci">${icon('close')}</button>
+      ${!multi || multi.isDir ? `<button class="hud-btn" data-a="pausa" aria-label="${t('Pausa')}">${icon('pause')}</button>` : ''}
+      <button class="hud-btn" data-a="ricentra" aria-label="${t('Ricentra')}">${icon('recenter')}</button>
+      <button class="hud-btn" data-a="esci" aria-label="${t('Esci')}">${icon('close')}</button>
     </div>
-    <div class="hud-ml pill"><b data-score>0</b><small>punti</small><small data-streak></small>${multi ? '<ol class="live" data-live></ol>' : ''}</div>
-    <div class="hud-mr pill"><b data-time>${training ? 'Allenamento' : arcade ? '0:00' : fmt(opts.duration)}</b></div>
+    <div class="hud-ml pill"><b data-score>0</b><small>${t('punti')}</small><small data-streak></small>${multi ? '<ol class="live" data-live></ol>' : ''}</div>
+    <div class="hud-mr pill"><b data-time>${training ? t('Allenamento') : arcade ? '0:00' : fmt(opts.duration)}</b></div>
     <div class="hud-msg" hidden></div>
-    <div class="hud-full" data-pause hidden>Pausa<small>${multi && !multi.isDir ? 'Aspetta il regista' : `Tocca ${icon('play', 18)} in alto a destra per riprendere`}</small></div>
-    <div class="hud-full" data-portrait hidden>Gira il telefono in orizzontale</div>
+    <div class="hud-full" data-pause hidden>${t('Pausa')}<small>${multi && !multi.isDir ? t('Aspetta il regista') : t('Tocca {icon} in alto a destra per riprendere', { icon: icon('play', 18) })}</small></div>
+    <div class="hud-full" data-portrait hidden>${t('Gira il telefono in orizzontale')}</div>
     <pre class="hud-debug" data-debug ${settings.debug ? '' : 'hidden'}></pre>`
   const $ = (s: string) => hud.querySelector<HTMLElement>(`[data-${s}]`)!
   const pauseBtn = hud.querySelector<HTMLElement>('[data-a="pausa"]')
@@ -101,24 +102,24 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     $('pause').hidden = !p
     if (!pauseBtn) return
     pauseBtn.innerHTML = icon(p ? 'play' : 'pause')
-    pauseBtn.setAttribute('aria-label', p ? 'Riprendi' : 'Pausa')
+    pauseBtn.setAttribute('aria-label', p ? t('Riprendi') : t('Pausa'))
   }
 
   hud.querySelector('.hud-tr')!.addEventListener('click', (e) => {
     const a = (e.target as HTMLElement).closest('button')?.dataset.a
-    if (a === 'esci' && (!multi || confirm('Esci dalla sfida? Puoi rientrare dalla lobby.'))) finish(true)
+    if (a === 'esci' && (!multi || confirm(t('Esci dalla sfida? Puoi rientrare dalla lobby.')))) finish(true)
     if (a === 'pausa' && multi) multi.pause(!paused)
     else if (a === 'pausa' && phase === 'gioco') setPaused(!paused)
     if (a === 'ricentra' && phase === 'gioco') {
       recenter = true
       if (!multi) setPaused(false)
-      say(shared ? `Punta ${shared.ref} e premi il grilletto` : aimText)
+      say(shared ? t('Punta {ref} e premi il grilletto', { ref: shared.ref }) : aimText)
     }
   })
 
   const onHide = () => !multi && document.visibilityState === 'hidden' && phase === 'gioco' && setPaused(true)
   document.addEventListener('visibilitychange', onHide)
-  sensors.onShake = () => phase === 'gioco' && say('Piano! Si cammina', 2000, 'warn')
+  sensors.onShake = () => phase === 'gioco' && say(t('Piano! Si cammina'), 2000, 'warn')
 
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
 
@@ -126,7 +127,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     await openStage()
   } catch {
     finish(true)
-    alert('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.')
+    alert(t('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.'))
     return
   }
   if (zombi && settings.z3d) {
@@ -135,11 +136,11 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       const stageEl = document.getElementById('stage')!
       z3 = createZombies3D(stageEl, stageEl.querySelector('canvas')!)
     } catch {
-      say('Il 3D non si è caricato: uso il 2D', 2500, 'warn')
+      say(t('Il 3D non si è caricato: uso il 2D'), 2500, 'warn')
     }
   }
   if ((phase as string) === 'fine') return // uscita durante il caricamento (finish la cambia)
-  say(shared ? aimText : multi ? 'Al via punta il fucile davanti a te' : 'Punta il fucile davanti a te e premi il grilletto')
+  say(shared ? aimText : multi ? t('Al via punta il fucile davanti a te') : t('Punta il fucile davanti a te e premi il grilletto'))
   raf = requestAnimationFrame(frame)
 
   function alive(t: Target) {
@@ -168,14 +169,14 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
       viaAt = now
       if (shared) {
         play('beep')
-        say('Fatto! Aspetta il via', 0)
+        say(t('Fatto! Aspetta il via'), 0)
       }
       return
     }
     if (recenter) {
       yaw0 = sensors.yaw
       recenter = false
-      say('Ricentrato!', 900)
+      say(t('Ricentrato!'), 900)
       return
     }
     if (phase !== 'gioco' || paused || size.h > size.w) return
@@ -188,23 +189,23 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     play('pew')
     beamFx(color)
     const [ax, ay] = aimPoint()
-    const t = pick(ax, ay)
-    if (!t) {
+    const hit = pick(ax, ay)
+    if (!hit) {
       sparkFx(ax, ay)
       streak = 0
       miss()
       return report()
     }
-    t.hitAt = gameT
-    const pts = POINTS[t.kind]
+    hit.hitAt = gameT
+    const pts = POINTS[hit.kind]
     navigator.vibrate?.(30)
-    shared?.claim(t.id) // i punti li assegna il server al primo che arriva
-    if (t.kind === 'amico') {
+    shared?.claim(hit.id) // i punti li assegna il server al primo che arriva
+    if (hit.kind === 'amico') {
       score = Math.max(0, score + pts)
       streak = 0
       play('oops')
       textFx(ax, ay, String(pts), '#ffab4c')
-      say('Il gattino no!', 1200)
+      say(t('Il gattino no!'), 1200)
       miss()
       return report()
     }
@@ -213,12 +214,12 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     best = Math.max(best, streak)
     score += pts
     play(clay ? 'crack' : ducks ? 'quack' : 'pop_' + opts.theme)
-    if (ducks) say(['Qua qua!', 'Che spavento!', 'Scappa via!'][good % 3], 600)
-    if (zombi) say(['Preso!', 'Che solletico!', 'Puff!'][good % 3], 600)
+    if (ducks) say([t('Qua qua!'), t('Che spavento!'), t('Scappa via!')][good % 3], 600)
+    if (zombi) say([t('Preso!'), t('Che solletico!'), t('Puff!')][good % 3], 600)
     play('hit')
-    burstFx(ax, ay, ducks ? ['#ffffff', '#f4e9d0', t.kind === 'dorato' ? GOLD : '#ffd23f', color] : clay ? [t.kind === 'dorato' ? GOLD : '#ff8a3d', '#c4561d', '#ffffff', color] : [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
+    burstFx(ax, ay, ducks ? ['#ffffff', '#f4e9d0', hit.kind === 'dorato' ? GOLD : '#ffd23f', color] : clay ? [hit.kind === 'dorato' ? GOLD : '#ff8a3d', '#c4561d', '#ffffff', color] : [color, hit.kind === 'dorato' ? GOLD : TINTS[hit.tint], '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
-    textFx(ax, ay, `+${pts}`, t.kind === 'dorato' ? GOLD : '#ffffff')
+    textFx(ax, ay, `+${pts}`, hit.kind === 'dorato' ? GOLD : '#ffffff')
     report()
   }
 
@@ -226,7 +227,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   function miss() {
     if (!arcade) return
     lives--
-    if (lives === 3) say('Attenzione: ti restano 3 colpi', 1400, 'warn')
+    if (lives === 3) say(t('Attenzione: ti restano 3 colpi'), 1400, 'warn')
     if (lives <= 0) setTimeout(() => phase === 'gioco' && finish(false), 1200)
   }
 
@@ -280,7 +281,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
         if (multi && !shared) yaw0 = sensors.yaw
         phase = 'gioco'
         play('go')
-        say('Via!', 700, 'huge')
+        say(t('Via!'), 700, 'huge')
       }
     }
     if (clock) gameT = Math.max(0, clock.t) // tempo comune a tutti i telefoni
@@ -314,15 +315,15 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
 
     // uno zombi arrivato vicino ti fa il solletico: un punto in meno (nei condivisi se ne va e basta)
     if (zombi && phase === 'gioco') {
-      for (const t of targets) {
-        if (t.hitAt !== undefined || gameT < t.born + t.life) continue
-        t.hitAt = gameT
-        t.caught = true
+      for (const tg of targets) {
+        if (tg.hitAt !== undefined || gameT < tg.born + tg.life) continue
+        tg.hitAt = gameT
+        tg.caught = true
         if (shared) continue
         score = Math.max(0, score - 1)
         streak = 0
         play('oops')
-        say('Uno zombi ti ha fatto il solletico! -1', 1500, 'warn')
+        say(t('Uno zombi ti ha fatto il solletico! -1'), 1500, 'warn')
         miss()
         navigator.vibrate?.([40, 60, 40])
         report()
@@ -337,7 +338,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
           tg.launched = true
           dogAt = gameT
           play('laugh')
-          say('Scappata! Il cane se la ride', 1200)
+          say(t('Scappata! Il cane se la ride'), 1200)
         }
     // il "tunk" della macchina che lancia i piattelli
     if (clay && phase === 'gioco')
@@ -537,24 +538,24 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
 
   let hudKey = ''
   function updateHud() {
-    const time = training ? 'Allenamento' : arcade ? fmt(gameT) : fmt(Math.max(0, opts.duration - gameT))
+    const time = training ? t('Allenamento') : arcade ? fmt(gameT) : fmt(Math.max(0, opts.duration - gameT))
     const live = multi ? multi.board() : []
     const ammo = gun.shown(performance.now())
     const key = `${score}|${streak}|${ammo}|${shots}|${lives}|${gun.hot()}|${time}|${live.map((l) => l.name + l.score).join()}`
     if (key === hudKey) return
     hudKey = key
     $('score').textContent = String(score)
-    $('streak').textContent = streak >= 3 ? `serie ${streak}` : ''
+    $('streak').textContent = streak >= 3 ? t('serie {n}', { n: streak }) : ''
     $('time').textContent = time
     if (multi)
       $('live').innerHTML = live.slice(0, 4).map((l) => `<li class="${l.me ? 'mine' : ''}">${esc(l.name)} <b>${l.score}</b></li>`).join('')
     $('ammo').innerHTML = arcade
-      ? `<span class="ammo-free">Colpi <b>${lives}</b></span>`
+      ? `<span class="ammo-free">${t('Colpi')} <b>${lives}</b></span>`
       : booth
-      ? `<span class="ammo-free">Colpi <b>${BOOTH.shots - shots}</b></span>`
+      ? `<span class="ammo-free">${t('Colpi')} <b>${BOOTH.shots - shots}</b></span>`
       : opts.heat && !training
       ? `<span class="ammo ${gun.hot() ? 'hot' : ''}">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(AMMO - ammo)}</span>`
-      : '<span class="ammo-free">Colpi infiniti</span>'
+      : `<span class="ammo-free">${t('Colpi infiniti')}</span>`
   }
 
   function finish(aborted: boolean) {
@@ -572,7 +573,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
     if (aborted || training) return onEnd(null)
     play('end')
-    const name = settings.name || 'Senza nome'
+    const name = settings.name || t('Senza nome')
     const rank = saveRecord(recordKey(opts.diff, arcade ? 0 : opts.duration, booth ? 'chiosco' : clay ? 'piattello' : ducks ? 'anatre' : zombi ? 'zombi' : 'tiro'), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
     onEnd({ ...opts, score, shots, good, best, rank })
   }

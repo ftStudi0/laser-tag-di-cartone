@@ -1,7 +1,8 @@
 import type { Kind, Theme } from './targets.ts'
 import { star } from './stage.ts'
+import { t } from './i18n.ts'
 
-export const THEMES: Record<Theme, string> = { palloncini: 'Palloncini', stelle: 'Stelle', mostri: 'Mostriciattoli', lattine: 'Lattine', zombi: 'Zombi buffi' }
+export const THEMES: Record<Theme, string> = { palloncini: t('Palloncini'), stelle: t('Stelle'), mostri: t('Mostriciattoli'), lattine: t('Lattine'), zombi: t('Zombi buffi') }
 export const TINTS = ['#ff5a5f', '#3d8bfd', '#2ec27e', '#a66cff']
 export const GOLD = '#ffc531'
 const OUT = 'rgba(40,30,60,0.55)'

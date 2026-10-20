@@ -1,0 +1,145 @@
+// Traduzioni inglesi: chiave = testo italiano esatto passato a t().
+export default {
+  // nomi di giochi, modi, difficoltà
+  'Tutti contro tutti': 'Free for all',
+  'Due squadre': 'Two teams',
+  'Laser tag': 'Laser tag',
+  'Sfida a bersagli': 'Target challenge',
+  'Bersagli condivisi': 'Shared targets',
+  'Facile': 'Easy',
+  'Media': 'Medium',
+  'Difficile': 'Hard',
+
+  // da rules.ts (condiviso col server): squadre, riferimenti, stati
+  'Squadra Arancio': 'Orange team',
+  'Squadra Blu': 'Blue team',
+  'Arancio': 'Orange',
+  'Blu': 'Blue',
+  'la TV': 'the TV',
+  'la porta': 'the door',
+  'la finestra': 'the window',
+  'il divano': 'the sofa',
+  'in gioco': 'in the game',
+  'fuori': 'out',
+  'protetto': 'shielded',
+
+  // messaggi di errore del server (worker/index.ts)
+  'Partita non trovata. Controlla il codice.': 'Game not found. Check the code.',
+  'La partita è piena.': 'The game is full.',
+
+  // creare ed entrare
+  'Creo la partita...': 'Creating the game...',
+  'Non riesco a creare la partita. Serve la connessione a internet.': "I can't create the game. You need an internet connection.",
+  'Menu': 'Menu',
+  'Entra in partita': 'Join game',
+  'Il codice della partita': 'The game code',
+  'Il tuo nome': 'Your name',
+  'Scrivilo qui': 'Type it here',
+  'Entra': 'Join',
+  'Oppure inquadra il QR del regista con la fotocamera del telefono.': "Or point your phone's camera at the host's QR code.",
+  'Senza nome': 'No name',
+  'Mi collego alla partita...': 'Connecting to the game...',
+  'Pausa tra i round, per far riposare i telefoni: ancora {time}': 'Break between rounds, to let the phones rest: {time} left',
+  'Questo telefono non sa quando ti giri, quindi non vede i bersagli intorno. Per lui arriverà la modalità Bersagli sui muri.':
+    "This phone can't tell when you turn, so it can't see the targets around you. Targets on the walls mode is coming for it.",
+
+  // regole
+  'Dopo {n} colpi il fucile si scalda: aspetta 2 secondi che si raffreddi.': 'After {n} shots the blaster overheats: wait 2 seconds for it to cool down.',
+  'Colpi infiniti in questa partita.': 'Unlimited shots in this game.',
+  'Prima del via': 'Before the start',
+  'Mettetevi vicini, puntate tutti {ref} e premete il grilletto. Così i bersagli sono nello stesso posto per tutti.':
+    'Stand close together, everyone point at {ref} and press the trigger. That way the targets are in the same place for everyone.',
+  'Si spara': 'Shooting',
+  'Gli stessi bersagli per tutti: chi lo colpisce prima lo prende, e il bersaglio sparisce anche per gli altri.':
+    'Same targets for everyone: whoever hits a target first gets it, and it disappears for the others too.',
+  'Attenzione': 'Watch out',
+  'Gli zombi che arrivano vicino se ne vanno: colpiscili prima!': 'Zombies that get close go away: hit them first!',
+  'Non colpire il gattino col cuore: toglie 2 punti.': "Don't hit the kitten with the heart: it takes away 2 points.",
+  'Si vince': 'How to win',
+  'Vince la squadra che prende più bersagli.': 'The team that gets the most targets wins.',
+  'Vince chi prende più punti. Se i bersagli scivolano, ricentra con il pulsante in alto.':
+    'Whoever gets the most points wins. If the targets drift, recenter with the button at the top.',
+  'I bersagli compaiono intorno a te: girati, mira e tocca il grilletto. Tutti hanno gli stessi bersagli.':
+    'Targets appear all around you: turn, aim and tap the trigger. Everyone has the same targets.',
+  'Colpi': 'Shots',
+  'Se uno zombi ti arriva vicino ti fa il solletico: un punto in meno.': 'If a zombie gets close it tickles you: one point less.',
+  'Vince la squadra che fa più punti: si sommano i punti di tutti.': "The team with the most points wins: everyone's points are added up.",
+  'Vince chi ha più punti alla fine. La classifica si vede durante la sfida.':
+    'Whoever has the most points at the end wins. You can see the leaderboard during the challenge.',
+  'Metti il mirino sul foglio di un avversario e tocca il grilletto.': "Put the crosshair on another player's sheet and tap the trigger.",
+  'Fuori gioco': 'Out of the game',
+  'Hai {n} cuori. Quando finiscono stai fuori 8 secondi, poi rientri con lo scudo.':
+    'You have {n} hearts. When they run out you are out for 8 seconds, then you come back with a shield.',
+  'Vince la squadra con più punti. Non si colpiscono i compagni.': "The team with the most points wins. You can't hit your teammates.",
+  '1 punto per ogni colpo, 3 in più quando mandi qualcuno fuori gioco.': '1 point for each hit, 3 more when you send someone out of the game.',
+
+  // chip di stato del giocatore
+  'giroscopio': 'gyroscope',
+  'sensori': 'sensors',
+  'fucile': 'blaster',
+  'fotocamera': 'camera',
+  'mirino': 'crosshair',
+  'numero doppio': 'same number',
+
+  // lobby
+  'Esci': 'Leave',
+  'Riconnessione...': 'Reconnecting...',
+  'Codice della partita': 'Game code',
+  'Gli altri toccano Entra in partita e scrivono il codice, oppure inquadrano il QR.':
+    'The others tap Join game and type the code, or scan the QR code.',
+  'Gioco': 'Game',
+  'Come si gioca': 'How to play',
+  'Durata': 'Length',
+  'Cuori': 'Hearts',
+  'Tema': 'Theme',
+  'Difficoltà': 'Difficulty',
+  "Cosa puntate tutti all'inizio": 'What everyone points at first',
+  'Infiniti': 'Unlimited',
+  'Il fucile si scalda': 'The blaster overheats',
+  'Il regista': 'The host',
+  'Gioco anche io': 'I play too',
+  'Faccio solo il regista': 'I am only the host',
+  'Volume per tutti': 'Volume for everyone',
+  'Giocatori ({n})': 'Players ({n})',
+  '(tu)': '(you)',
+  'regista': 'host',
+  'disconnesso': 'disconnected',
+  'Numero del marker': 'Marker number',
+  'Ancora nessuno. Fai entrare gli altri con il codice.': 'Nobody yet. Let the others join with the code.',
+  'Il mio marker': 'My marker',
+  'Il mio colore': 'My color',
+  'Colore {n}': 'Color {n}',
+  'Colore {n}, già preso': 'Color {n}, already taken',
+  'Fucile non pronto': 'Blaster not ready',
+  'Ho il fucile pronto': 'My blaster is ready',
+  'Il mirino non è calibrato: fallo da Prepara il fucile per colpire meglio.':
+    'The crosshair is not calibrated: do it from Set up your blaster to hit better.',
+  'Via!': 'Go!',
+  'Parti lo stesso': 'Start anyway',
+  'Aspetta che il regista faccia partire il gioco.': 'Wait for the host to start the game.',
+  'Esci dalla partita?': 'Leave the game?',
+  'Non sono tutti pronti. Partire lo stesso?': 'Not everyone is ready. Start anyway?',
+  'La fotocamera non si apre. Controlla il permesso nelle impostazioni del browser.':
+    "The camera won't open. Check the permission in the browser settings.",
+
+  // partita in corso, risultati, plancia
+  'Partita in corso': 'Game in progress',
+  'Rientra quando vuoi: il tuo punteggio è salvo.': 'Come back in whenever you want: your score is saved.',
+  'Rientra in partita': 'Back to the game',
+  'Fine partita!': 'Game over!',
+  'Vince!': 'Wins!',
+  'Pareggio!': "It's a tie!",
+  'Nome': 'Name',
+  'Punti': 'Points',
+  'Precisione': 'Accuracy',
+  'Serie migliore': 'Best streak',
+  'Mandati fuori': 'Sent out',
+  'Torna alla lobby': 'Back to the lobby',
+  'Plancia del regista': 'Host board',
+  'Termina': 'End',
+  'Terminare la partita per tutti?': 'End the game for everyone?',
+  'Parte tra {n}': 'Starts in {n}',
+  'Riprendi': 'Resume',
+  'Pausa per tutti': 'Pause for everyone',
+  'precisione {n}%': 'accuracy {n}%',
+} satisfies Record<string, string>

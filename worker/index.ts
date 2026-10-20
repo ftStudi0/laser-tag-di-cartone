@@ -297,7 +297,7 @@ function sanitize(c: Config, prev: Config): Config {
   return {
     game,
     mode: c.mode === 'squadre' ? 'squadre' : 'ffa',
-    duration: ds.includes(c.duration) ? c.duration : game === prev.game && ds.includes(prev.duration) ? prev.duration : ds[1],
+    duration: ds.includes(c.duration) ? c.duration : game === prev.game && ds.includes(prev.duration) ? prev.duration : ds[0],
     life: [3, 5, 7].includes(c.life) ? c.life : 5,
     ammo: [0, 10].includes(c.ammo) ? c.ammo : 10,
     plays: !!c.plays,

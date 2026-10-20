@@ -11,6 +11,7 @@ import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, video,
 } from './stage.ts'
 import { heat, onTrigger } from './trigger.ts'
+import { t } from './i18n.ts'
 
 
 // Il colore di chi spara: quello della squadra, oppure il suo. Mai rosso per chi viene colpito: giallo brillante.
@@ -37,31 +38,31 @@ export async function playLaser(net: Net, onEnd: () => void) {
   hud.innerHTML = `
     <div class="hud-tl pill lt-life"><span data-life></span><span data-ammo></span></div>
     <div class="hud-tr">
-      ${isDir() ? `<button class="hud-btn" data-a="pausa" aria-label="Pausa per tutti">${icon('pause')}</button>` : ''}
-      <button class="hud-btn" data-a="esci" aria-label="Esci">${icon('close')}</button>
+      ${isDir() ? `<button class="hud-btn" data-a="pausa" aria-label="${t('Pausa per tutti')}">${icon('pause')}</button>` : ''}
+      <button class="hud-btn" data-a="esci" aria-label="${t('Esci')}">${icon('close')}</button>
     </div>
-    <div class="hud-ml pill"><b data-score>0</b><small>punti</small><small data-team></small></div>
-    <div class="hud-mr pill"><b data-time></b><small data-shield hidden>${icon('shield', 14)} scudo</small></div>
+    <div class="hud-ml pill"><b data-score>0</b><small>${t('punti')}</small><small data-team></small></div>
+    <div class="hud-mr pill"><b data-time></b><small data-shield hidden>${icon('shield', 14)} ${t('scudo')}</small></div>
     <div class="hud-flash" data-flash></div>
     <div class="hud-msg" hidden></div>
-    <div class="hud-full lt-out" data-out hidden><span class="drain" data-drain></span>Fuori gioco<span class="out-hearts" data-outh></span><small data-outt></small></div>
-    <div class="hud-full" data-pause hidden>Pausa
-      ${isDir() ? `<small>Tocca ${icon('play', 18)} in alto a destra per riprendere</small><button class="btn primary lt-stop" data-a="fine">${icon('stop', 20)}Termina la partita</button>` : '<small>Aspetta il regista</small>'}
+    <div class="hud-full lt-out" data-out hidden><span class="drain" data-drain></span>${t('Fuori gioco')}<span class="out-hearts" data-outh></span><small data-outt></small></div>
+    <div class="hud-full" data-pause hidden>${t('Pausa')}
+      ${isDir() ? `<small>${t('Tocca {icon} in alto a destra per riprendere', { icon: icon('play', 18) })}</small><button class="btn primary lt-stop" data-a="fine">${icon('stop', 20)}${t('Termina la partita')}</button>` : `<small>${t('Aspetta il regista')}</small>`}
     </div>
-    <div class="hud-full" data-portrait hidden>Gira il telefono in orizzontale</div>
+    <div class="hud-full" data-portrait hidden>${t('Gira il telefono in orizzontale')}</div>
     <pre class="hud-debug" data-debug ${settings.debug ? '' : 'hidden'}></pre>`
   const $ = (s: string) => hud.querySelector<HTMLElement>(`[data-${s}]`)!
 
   hud.addEventListener('click', onClick)
   function onClick(e: Event) {
     const a = (e.target as HTMLElement).closest('button')?.dataset.a
-    if (a === 'esci' && confirm('Esci dalla partita? Puoi rientrare dalla lobby.')) finish()
+    if (a === 'esci' && confirm(t('Esci dalla partita? Puoi rientrare dalla lobby.'))) finish()
     if (a === 'pausa') net.send({ t: 'pause', on: !room.pausedAt })
-    if (a === 'fine' && confirm('Terminare la partita per tutti?')) net.send({ t: 'stop' })
+    if (a === 'fine' && confirm(t('Terminare la partita per tutti?'))) net.send({ t: 'stop' })
   }
 
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
-  sensors.onShake = () => say('Piano! Si cammina', 2000, 'warn')
+  sensors.onShake = () => say(t('Piano! Si cammina'), 2000, 'warn')
   const prevState = net.onState
   net.onState = onState
 
@@ -69,7 +70,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     await openStage()
   } catch {
     finish()
-    alert('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.')
+    alert(t('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.'))
     return
   }
   if (done) return
@@ -91,12 +92,12 @@ export async function playLaser(net: Net, onEnd: () => void) {
       play('colpito', 1.6) // più forte: tutti nella stanza sentono chi è stato preso
       navigator.vibrate?.(ev.out ? [80, 60, 200] : 120)
       if (ev.out) play('fuori')
-      say(`Ti ha preso ${by?.name ?? 'qualcuno'}!`, 1600, 'warn')
+      say(t('Ti ha preso {name}!', { name: by?.name ?? t('qualcuno') }), 1600, 'warn')
     }
     if (ev.by === net.me) {
       const [ax, ay] = aimPoint()
       textFx(ax, ay, ev.out ? '+4' : '+1', '#ffffff')
-      if (ev.out) say(`${to?.name ?? ''} è fuori gioco!`, 1500)
+      if (ev.out) say(t('{name} è fuori gioco!', { name: to?.name ?? '' }), 1500)
     }
   }
 
@@ -150,7 +151,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
       const s = sheet(hit.m.num)
       if (--s.life <= 0) {
         s.outUntil = performance.now() + OUT_MS
-        say(`Il foglio ${hit.m.num} è fuori gioco!`, 1500)
+        say(t('Il foglio {n} è fuori gioco!', { n: hit.m.num }), 1500)
       }
     }
     play('hit')
@@ -183,10 +184,10 @@ export async function playLaser(net: Net, onEnd: () => void) {
     } else if (left <= 0 && lastCount > 0) {
       lastCount = 0
       play('go')
-      say('Via!', 700, 'huge')
+      say(t('Via!'), 700, 'huge')
     } else if (left > COUNTDOWN_MS && !lastCount) {
       lastCount = 4
-      say('Si parte tra poco...')
+      say(t('Si parte tra poco...'))
     }
 
     // fuori gioco: 8 secondi, poi di nuovo in gioco con lo scudo
@@ -202,12 +203,12 @@ export async function playLaser(net: Net, onEnd: () => void) {
         $('outh').dataset.k = key
         $('outh').innerHTML = Array.from({ length: room.config.life }, (_, i) => `<i class="${i < lit ? '' : 'off'}">${icon('heart', 34)}</i>`).join('')
       }
-      $('outt').textContent = `Di nuovo in gioco tra ${Math.ceil((self!.outUntil - sNow) / 1000)}`
+      $('outt').textContent = t('Di nuovo in gioco tra {s}', { s: Math.ceil((self!.outUntil - sNow) / 1000) })
       gun.reset()
     }
     if (wasOut && st !== 'fuori') {
       play('rientro')
-      say('Di nuovo in gioco!', 1500)
+      say(t('Di nuovo in gioco!'), 1500)
     }
     wasOut = st === 'fuori'
     $('shield').hidden = st !== 'protetto'
@@ -218,9 +219,9 @@ export async function playLaser(net: Net, onEnd: () => void) {
     const ms = now - det!.state.at < 300 ? det!.state.markers : []
     ctx.clearRect(0, 0, size.w, size.h)
     const [ax, ay] = aimPoint()
-    const t = target(ms, ax, ay, sNow)
+    const aimed = target(ms, ax, ay, sNow)
     for (const m of ms) badge(m, sNow)
-    if (t) drawMarker(ctx, t.m, color(), 4)
+    if (aimed) drawMarker(ctx, aimed.m, color(), 4)
     // il marker colpito si illumina per un istante
     if (glow && now - glow.t < 250) {
       ctx.save()
@@ -232,7 +233,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     }
     drawFx()
     const canShoot = !room.pausedAt && st === 'in gioco' && left <= 0
-    drawCrosshair(ax, ay, canShoot && !!t, color())
+    drawCrosshair(ax, ay, canShoot && !!aimed, color())
 
     const fl = Math.max(0, 1 - (now - flashT) / 500)
     $('flash').style.opacity = String(fl)
@@ -246,10 +247,10 @@ export async function playLaser(net: Net, onEnd: () => void) {
 
   function why(num: number, now: number) {
     const p = participants(room).find((p) => p.marker === num)
-    if (!p) return me() && practice(room, me()!, num) ? `Il foglio ${num} è fuori gioco` : `Nessuno in partita ha il numero ${num}`
-    if (p.id === net.me) return 'Questo è il tuo numero!'
-    if (room.config.mode === 'squadre' && p.team === me()?.team) return `${p.name} è della tua squadra`
-    return status(p, now) === 'fuori' ? `${p.name} è fuori gioco` : `${p.name} ha lo scudo`
+    if (!p) return me() && practice(room, me()!, num) ? t('Il foglio {n} è fuori gioco', { n: num }) : t('Nessuno in partita ha il numero {n}', { n: num })
+    if (p.id === net.me) return t('Questo è il tuo numero!')
+    if (room.config.mode === 'squadre' && p.team === me()?.team) return t('{name} è della tua squadra', { name: p.name })
+    return status(p, now) === 'fuori' ? t('{name} è fuori gioco', { name: p.name }) : t('{name} ha lo scudo', { name: p.name })
   }
 
   // Sopra il marker si disegna il bersaglio del giocatore con nome, cuori e punti. Il riconoscimento usa il video, non il disegno.
@@ -259,8 +260,8 @@ export async function playLaser(net: Net, onEnd: () => void) {
     if (!p && self && practice(room, self, m.num)) {
       const s = sheet(m.num)
       return s.life > 0
-        ? rings(m, '#ffd23f', [`Foglio ${m.num}`, '\u2665'.repeat(s.life)], 0.92, true)
-        : rings(m, '#9aa3ad', [`Foglio ${m.num}`, 'fuori gioco'], 0.6)
+        ? rings(m, '#ffd23f', [t('Foglio {n}', { n: m.num }), '\u2665'.repeat(s.life)], 0.92, true)
+        : rings(m, '#9aa3ad', [t('Foglio {n}', { n: m.num }), t('fuori gioco')], 0.6)
     }
     if (!p) return drawMarker(ctx, m, 'rgba(255,255,255,0.55)', 2)
     const st = status(p, now)
@@ -268,7 +269,7 @@ export async function playLaser(net: Net, onEnd: () => void) {
     rings(
       m,
       st === 'fuori' ? '#9aa3ad' : room.config.mode === 'squadre' ? TEAMS[p.team].color : p.color,
-      [p.name, st === 'fuori' ? 'fuori gioco' : '\u2665'.repeat(Math.max(0, life)) + (st === 'protetto' ? ' scudo' : ''), `${p.score} punti`],
+      [p.name, st === 'fuori' ? t('fuori gioco') : '\u2665'.repeat(Math.max(0, life)) + (st === 'protetto' ? ' ' + t('scudo') : ''), t('{n} punti', { n: p.score })],
       st === 'fuori' ? 0.6 : 0.92,
       st !== 'fuori',
     )
@@ -316,10 +317,10 @@ export async function playLaser(net: Net, onEnd: () => void) {
     $('life').innerHTML = Array.from({ length: c.life }, (_, i) => `<i class="${i < life ? '' : 'off'}">${icon('heart', 20)}</i>`).join('')
     $('ammo').innerHTML = c.ammo
       ? `<span class="ammo ${gun.hot() ? 'hot' : ''}">${'<i></i>'.repeat(ammo)}${'<i class="off"></i>'.repeat(c.ammo - ammo)}</span>`
-      : '<span class="ammo-free">Colpi infiniti</span>'
+      : `<span class="ammo-free">${t('Colpi infiniti')}</span>`
     $('score').textContent = String(self.score)
     $('team').textContent = c.mode === 'squadre' ? TEAMS[self.team].name : ''
-    $('time').textContent = net.online ? time : 'Rete...'
+    $('time').textContent = net.online ? time : t('Rete...')
   }
 
   function finish() {

@@ -96,7 +96,7 @@ export const TEAMS = [
   { name: 'Squadra Blu', color: '#3d8bfd' },
 ]
 export const DEFAULT_CONFIG: Config = { game: 'laser', mode: 'ffa', duration: 180, life: 5, ammo: 10, plays: true, theme: 'palloncini', diff: 'facile', ref: 'la TV' }
-export const DURATIONS: Record<Game, number[]> = { laser: [120, 180, 300], sfida: [60, 90, 120], condivisi: [60, 90, 120] }
+export const DURATIONS: Record<Game, number[]> = { laser: [180, 300, 600], sfida: [180, 300, 600], condivisi: [180, 300, 600] } // secondi
 export const REFS = ['la TV', 'la porta', 'la finestra', 'il divano']
 export const CALIBRATE_MS = 12_000 // Bersagli condivisi: tempo per puntare tutti insieme il riferimento
 export const SHARED_SIZE = 1.5 // bersagli più grandi: i giocatori sono in punti diversi della stanza

@@ -5,6 +5,9 @@ import { saveSettings, settings } from './settings.ts'
 import { createDetector, distanceOf, drawMarker, markerUnder, type Detector } from './markers.ts'
 import { aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hud, openStage, say, size, sparkFx, videoSize, view } from './stage.ts'
 import { onTrigger } from './trigger.ts'
+import { lang, t } from './i18n.ts'
+
+const num = (x: number) => (lang === 'it' ? x.toFixed(1).replace('.', ',') : x.toFixed(1))
 
 // Strumento a schermo intero sopra la fotocamera: HUD, ciclo di disegno e grilletto.
 async function tool(html: string, onFire: ((x: number, y: number) => void) | null, drawExtra: () => void, done: () => void) {
@@ -22,7 +25,7 @@ async function tool(html: string, onFire: ((x: number, y: number) => void) | nul
     await openStage()
   } catch {
     close()
-    alert('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.')
+    alert(t('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.'))
     return close
   }
   if (onFire) off = onTrigger(document.getElementById('stage')!, onFire)
@@ -42,15 +45,15 @@ export async function calibrateAim(done: () => void) {
   let det: Detector | null = null
   const close = await tool(
     `<div class="hud-panel left">
-       <b>Calibra il mirino</b>
-       <p>Metti il telefono nel fucile. Guarda lungo la canna e punta un marker (o un oggetto) a circa 3 metri.</p>
-       <p>Poi trascina il dito sullo schermo per spostare il mirino sopra l'oggetto.</p>
+       <b>${t('Calibra il mirino')}</b>
+       <p>${t('Metti il telefono nel fucile. Guarda lungo la canna e punta un marker (o un oggetto) a circa 3 metri.')}</p>
+       <p>${t("Poi trascina il dito sullo schermo per spostare il mirino sopra l'oggetto.")}</p>
        <p data-off></p>
      </div>
      <div class="hud-panel right">
-       <button class="btn small primary" data-a="salva">Salva</button>
-       <button class="btn small" data-a="azzera">Al centro</button>
-       <button class="btn small" data-a="annulla">Annulla</button>
+       <button class="btn small primary" data-a="salva">${t('Salva')}</button>
+       <button class="btn small" data-a="azzera">${t('Al centro')}</button>
+       <button class="btn small" data-a="annulla">${t('Annulla')}</button>
      </div>`,
     null,
     () => {
@@ -59,7 +62,7 @@ export async function calibrateAim(done: () => void) {
       const ms = det && performance.now() - det.state.at < 300 ? det.state.markers : []
       ms.forEach((m) => drawMarker(ctx, m, '#ffd23f', 3))
       drawCrosshair(x, y, !!markerUnder(ms, x, y), settings.color)
-      hud.querySelector('[data-off]')!.textContent = `Spostamento: ${Math.round(settings.offX)}, ${Math.round(settings.offY)}`
+      hud.querySelector('[data-off]')!.textContent = t('Spostamento: {x}, {y}', { x: Math.round(settings.offX), y: Math.round(settings.offY) })
     },
     () => {
       det?.dispose()
@@ -114,17 +117,17 @@ export async function calibrateFov(done: () => void) {
   let fov = settings.fov
   const lineX = () => size.w * 0.12
   const text = [
-    'Punta il mirino al centro di un oggetto lontano (almeno 3 metri) e premi il grilletto.',
-    'Ora girati piano verso destra finché l\'oggetto arriva sulla riga gialla a sinistra. Fermati e premi il grilletto.',
-    'Girati a destra e a sinistra: il puntino rosa deve restare sopra l\'oggetto. Se scivola, regola lo slider.',
+    t('Punta il mirino al centro di un oggetto lontano (almeno 3 metri) e premi il grilletto.'),
+    t("Ora girati piano verso destra finché l'oggetto arriva sulla riga gialla a sinistra. Fermati e premi il grilletto."),
+    t("Girati a destra e a sinistra: il puntino rosa deve restare sopra l'oggetto. Se scivola, regola lo slider."),
   ]
   const close = await tool(
-    `<div class="hud-panel left"><b>Campo visivo</b><p data-step></p><p data-fov></p></div>
+    `<div class="hud-panel left"><b>${t('Campo visivo')}</b><p data-step></p><p data-fov></p></div>
      <div class="hud-panel right">
        <input type="range" min="40" max="90" step="0.5" data-slider hidden>
-       <button class="btn small primary" data-a="salva" hidden>Salva</button>
-       <button class="btn small" data-a="rifai">Rifai</button>
-       <button class="btn small" data-a="annulla">Annulla</button>
+       <button class="btn small primary" data-a="salva" hidden>${t('Salva')}</button>
+       <button class="btn small" data-a="rifai">${t('Rifai')}</button>
+       <button class="btn small" data-a="annulla">${t('Annulla')}</button>
      </div>`,
     () => {
       if (step === 0) {
@@ -178,10 +181,10 @@ export async function calibrateFov(done: () => void) {
   const saveBtn = hud.querySelector<HTMLElement>('[data-a="salva"]')!
   const render = () => {
     hud.querySelector('[data-step]')!.textContent = text[step]
-    hud.querySelector('[data-fov]')!.textContent = `Campo visivo: ${fov.toFixed(1)} gradi`
+    hud.querySelector('[data-fov]')!.textContent = t('Campo visivo: {deg} gradi', { deg: fov.toFixed(1) })
   }
   render()
-  if (mode() === 'nessuno') hud.querySelector('[data-step]')!.textContent = 'Questo telefono non sa quando ti giri: il campo visivo non serve.'
+  if (mode() === 'nessuno') hud.querySelector('[data-step]')!.textContent = t('Questo telefono non sa quando ti giri: il campo visivo non serve.')
   slider.addEventListener('input', () => {
     fov = Number(slider.value)
     render()
@@ -204,10 +207,10 @@ export async function compassTest(done: () => void) {
   let step = 0
   let startYaw = 0, prevYaw = 0, turned = 0
   const close = await tool(
-    `<div class="hud-panel left"><b>Prova del giro completo</b><p data-step>Punta un oggetto con il mirino e premi il grilletto.</p><p data-turn></p></div>
+    `<div class="hud-panel left"><b>${t('Prova del giro completo')}</b><p data-step>${t('Punta un oggetto con il mirino e premi il grilletto.')}</p><p data-turn></p></div>
      <div class="hud-panel right">
-       <button class="btn small primary" data-a="fatto" hidden>Fatto</button>
-       <button class="btn small" data-a="annulla">Annulla</button>
+       <button class="btn small primary" data-a="fatto" hidden>${t('Fatto')}</button>
+       <button class="btn small" data-a="annulla">${t('Annulla')}</button>
      </div>`,
     () => {
       const stepEl = hud.querySelector('[data-step]')!
@@ -216,11 +219,11 @@ export async function compassTest(done: () => void) {
         turned = 0
         step = 1
         play('beep')
-        stepEl.textContent = 'Girati piano di un giro completo, torna sullo stesso oggetto, fermati un attimo e premi il grilletto.'
+        stepEl.textContent = t('Girati piano di un giro completo, torna sullo stesso oggetto, fermati un attimo e premi il grilletto.')
       } else if (step === 1) {
         if (Math.abs(turned) < 300 * D) {
           play('click')
-          say('Il giro non è completo, continua', 1500, 'warn')
+          say(t('Il giro non è completo, continua'), 1500, 'warn')
           return
         }
         const err = Math.abs(wrap(sensors.yaw - startYaw)) / D
@@ -230,8 +233,8 @@ export async function compassTest(done: () => void) {
         play(err <= 15 ? 'hit' : 'oops')
         stepEl.textContent =
           err <= 15
-            ? `Scarto di ${err.toFixed(0)} gradi: va bene, puoi giocare con i bersagli intorno.`
-            : `Scarto di ${err.toFixed(0)} gradi: troppo. Su questo telefono conviene la modalità Bersagli sui muri (arriva in una prossima versione).`
+            ? t('Scarto di {deg} gradi: va bene, puoi giocare con i bersagli intorno.', { deg: err.toFixed(0) })
+            : t('Scarto di {deg} gradi: troppo. Su questo telefono conviene la modalità Bersagli sui muri (arriva in una prossima versione).', { deg: err.toFixed(0) })
         hud.querySelector<HTMLElement>('[data-a="fatto"]')!.hidden = false
       }
     },
@@ -239,7 +242,7 @@ export async function compassTest(done: () => void) {
       if (step === 1) {
         turned += wrap(sensors.yaw - prevYaw)
         prevYaw = sensors.yaw
-        hud.querySelector('[data-turn]')!.textContent = `Giro: ${Math.min(360, Math.abs(turned / D)).toFixed(0)} gradi`
+        hud.querySelector('[data-turn]')!.textContent = t('Giro: {deg} gradi', { deg: Math.min(360, Math.abs(turned / D)).toFixed(0) })
       }
       const [ax, ay] = aimPoint()
       drawCrosshair(ax, ay, false, settings.color)
@@ -253,16 +256,16 @@ export async function compassTest(done: () => void) {
 export async function triggerTest(done: () => void) {
   let n = 0
   await tool(
-    `<div class="zone zone-trigger">grilletto</div>
+    `<div class="zone zone-trigger">${t('grilletto')}</div>
      <div class="zone zone-lip l"></div><div class="zone zone-lip r"></div>
-     <div class="zone zone-hook">gancio</div>
-     <div class="hud-panel left"><b>Prova del grilletto</b><p>Premi il grilletto del fucile: il punto toccato deve cadere nel riquadro tratteggiato.</p><p data-n>Tocchi: 0</p></div>
-     <div class="hud-panel right"><button class="btn small" data-a="annulla">Fine</button></div>`,
+     <div class="zone zone-hook">${t('gancio')}</div>
+     <div class="hud-panel left"><b>${t('Prova del grilletto')}</b><p>${t('Premi il grilletto del fucile: il punto toccato deve cadere nel riquadro tratteggiato.')}</p><p data-n>${t('Tocchi: {n}.', { n: 0 })}</p></div>
+     <div class="hud-panel right"><button class="btn small" data-a="annulla">${t('Fine')}</button></div>`,
     (x, y) => {
       n++
       const zone = hud.querySelector('.zone-trigger')!.getBoundingClientRect()
       const inside = x >= zone.left && x <= zone.right && y >= zone.top && y <= zone.bottom
-      hud.querySelector('[data-n]')!.textContent = `Tocchi: ${n}. ${inside ? 'Nel posto giusto!' : 'Fuori dal riquadro'}`
+      hud.querySelector('[data-n]')!.textContent = t('Tocchi: {n}.', { n }) + ' ' + (inside ? t('Nel posto giusto!') : t('Fuori dal riquadro'))
       play(inside ? 'hit' : 'click')
       sparkFx(x, y)
       beamFx(settings.color)
@@ -282,8 +285,8 @@ export async function triggerTest(done: () => void) {
 export async function aimTest(done: () => void) {
   let det: Detector | null = null
   await tool(
-    `<div class="hud-panel left"><b>Prova mirino</b><p>Inquadra i marker stampati da diverse distanze. Il mirino si chiude quando sei sopra un marker: prova a sparare.</p><p data-info></p></div>
-     <div class="hud-panel right"><button class="btn small" data-a="annulla">Fine</button></div>`,
+    `<div class="hud-panel left"><b>${t('Prova mirino')}</b><p>${t('Inquadra i marker stampati da diverse distanze. Il mirino si chiude quando sei sopra un marker: prova a sparare.')}</p><p data-info></p></div>
+     <div class="hud-panel right"><button class="btn small" data-a="annulla">${t('Fine')}</button></div>`,
     () => {
       if (!det) return
       const [ax, ay] = aimPoint()
@@ -294,7 +297,7 @@ export async function aimTest(done: () => void) {
         if (!m) return sparkFx(ax, ay)
         play('hit')
         burstFx(ax, ay, [settings.color, '#ffffff', '#ffd23f'])
-        say(`Marker ${m.num} colpito!`, 900)
+        say(t('Marker {n} colpito!', { n: m.num }), 900)
       })
     },
     () => {
@@ -308,7 +311,7 @@ export async function aimTest(done: () => void) {
       for (const m of ms) {
         drawMarker(ctx, m, '#ffd23f', 3)
         const top = m.pts.reduce((a, p) => (p[1] < a[1] ? p : a))
-        const label = `N. ${m.num}  ${distanceOf(m).toFixed(1).replace('.', ',')} m`
+        const label = t('N. {n}  {d} m', { n: m.num, d: num(distanceOf(m)) })
         ctx.lineWidth = 5
         ctx.strokeStyle = 'rgba(0,0,0,0.6)'
         ctx.fillStyle = '#fff'
@@ -317,7 +320,7 @@ export async function aimTest(done: () => void) {
       }
       drawCrosshair(ax, ay, !!markerUnder(ms, ax, ay), settings.color)
       hud.querySelector('[data-info]')!.textContent =
-        `Analisi: ${det.state.fps.toFixed(0)} al secondo, ${det.state.ms.toFixed(0)} ms ciascuna. Marker visti: ${ms.length ? ms.map((m) => m.num).join(', ') : 'nessuno'}`
+        t('Analisi: {fps} al secondo, {ms} ms ciascuna. Marker visti: {seen}', { fps: det.state.fps.toFixed(0), ms: det.state.ms.toFixed(0), seen: ms.length ? ms.map((m) => m.num).join(', ') : t('nessuno') })
     },
     () => {
       det?.dispose()

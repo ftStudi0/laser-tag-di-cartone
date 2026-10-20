@@ -123,3 +123,19 @@ const late = sh.find((t) => t.id !== t0.id)!
 assert.equal(claim(lt, pc, sh, late.id, (late.born + late.life + 2) * 1000), null) // ormai volato via
 
 console.log('ok')
+
+// ogni testo passato a t() ha la sua traduzione inglese, con gli stessi segnaposto
+{
+  const { readdirSync, readFileSync } = await import('node:fs')
+  const { EN } = await import('./i18n.ts')
+  const holes = (x: string) => (x.match(/\{\w+\}/g) ?? []).sort().join()
+  for (const f of readdirSync(new URL('.', import.meta.url)).filter((f) => f.endsWith('.ts') && f !== 'i18n.ts' && f !== 'check.ts')) {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8')
+    for (const m of src.matchAll(/\bt\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1/g)) {
+      const key = m[2].replace(/\\(.)/g, '$1')
+      assert.ok(!key.includes('${'), `${f}: niente \${} dentro t(), usa {nome}: ${key}`)
+      assert.ok(key in EN, `${f}: manca la traduzione di "${key}"`)
+      assert.equal(holes(EN[key]), holes(key), `${f}: segnaposto diversi in "${key}"`)
+    }
+  }
+}

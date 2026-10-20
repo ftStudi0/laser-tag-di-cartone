@@ -1,5 +1,7 @@
 # Il fucile e il gioco
 
+[English](BLASTER.md)
+
 Il fucile è progettato nel [template PDF](laser-tag-fucile-template.pdf), che ha anche i passaggi di montaggio, e si vede nel [modello 3D](fucile-3d.html). Qui ci sono solo le cose che contano per il software.
 
 - **Telefono in orizzontale**, schermo verso chi gioca e fotocamera posteriore libera, verso la stanza. Può stare in tutti e due i versi: il gioco se ne accorge da solo.

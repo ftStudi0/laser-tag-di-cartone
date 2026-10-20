@@ -8,6 +8,7 @@ import {
 } from './stage.ts'
 import type { Diff } from './targets.ts'
 import { onTrigger } from './trigger.ts'
+import { t } from './i18n.ts'
 
 // Duello nel Far West contro il bandito Baffone: alla campana spunta, e bisogna colpirlo prima che tiri fuori la bandierina.
 // In Difficile può passare anche la signora Rosina, che non va colpita. In Arcade si va avanti finché non si sbaglia.
@@ -52,12 +53,12 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
   const H = settings.gunH
 
   hud.innerHTML = `
-    <div class="hud-tr"><button class="hud-btn" data-a="esci" aria-label="Esci">${icon('close')}</button></div>
-    <div class="hud-ml pill"><b data-me>0</b><small>${arcade ? 'di fila' : 'tu'}</small></div>
-    ${arcade ? '' : '<div class="hud-mr pill"><b data-bot>0</b><small>Baffone</small></div>'}
+    <div class="hud-tr"><button class="hud-btn" data-a="esci" aria-label="${t('Esci')}">${icon('close')}</button></div>
+    <div class="hud-ml pill"><b data-me>0</b><small>${arcade ? t('di fila') : t('tu')}</small></div>
+    ${arcade ? '' : `<div class="hud-mr pill"><b data-bot>0</b><small>${t('Baffone')}</small></div>`}
     <div class="hud-flash" data-flash style="--fc:#ffd23f"></div>
     <div class="hud-msg" hidden></div>
-    <div class="hud-full" data-portrait hidden>Gira il telefono in orizzontale</div>`
+    <div class="hud-full" data-portrait hidden>${t('Gira il telefono in orizzontale')}</div>`
   const $ = (s: string) => hud.querySelector<HTMLElement>(`[data-${s}]`)
   hud.querySelector('[data-a="esci"]')!.addEventListener('click', () => finish(true))
   const offTrigger = onTrigger(document.getElementById('stage')!, fire)
@@ -66,11 +67,11 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
     await openStage()
   } catch {
     finish(true)
-    alert('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.')
+    alert(t('Non riesco ad aprire la fotocamera. Controlla il permesso nelle impostazioni del browser.'))
     return
   }
   if (phase !== 'mira') return
-  say('Punta il fucile davanti a te e premi il grilletto')
+  say(t('Punta il fucile davanti a te e premi il grilletto'))
   raf = requestAnimationFrame(frame)
 
   function startRound() {
@@ -84,7 +85,7 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
     who = diff !== 'difficile' ? 'baffone' : roll < 0.25 ? 'rosina' : roll < 0.65 ? 'insieme' : 'baffone'
     bellAt = performance.now() + 2500 + Math.random() * 3000 // attesa a caso: non si può indovinare
     limit = Math.max(450, WAIT[diff] * 0.92 ** round)
-    say('Pronti...', 0, 'huge')
+    say(t('Pronti...'), 0, 'huge')
   }
 
   // lost: in Arcade il primo sbaglio chiude la partita. again: si rifà il round senza punti.
@@ -101,7 +102,7 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
 
   function lose(text: string) {
     bot++
-    say(arcade ? `${text}. Fine della corsa!` : text, 2000, 'warn')
+    say(arcade ? t('{text}. Fine della corsa!', { text }) : text, 2000, 'warn')
     next(true)
   }
 
@@ -124,13 +125,13 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
     if (phase === 'mira') {
       yaw0 = sensors.yaw
       phase = 'esito'
-      say('Bene! Arriva Baffone...', 1200)
+      say(t('Bene! Arriva Baffone...'), 1200)
       timer = window.setTimeout(startRound, 1400)
       return
     }
     if (phase === 'attesa') {
       play('oops')
-      return lose('Troppo presto! Il round va a Baffone')
+      return lose(t('Troppo presto! Il round va a Baffone'))
     }
     if (phase !== 'duello') return
     play('pew')
@@ -141,7 +142,7 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
       lookAt = now
       play('oops')
       sparkFx(ax, ay)
-      return lose('Ehi! Era la signora Rosina, lei non si colpisce')
+      return lose(t('Ehi! Era la signora Rosina, lei non si colpisce'))
     }
     if (!hasBandit() || !under(az, ax, ay)) return sparkFx(ax, ay)
     const ms = Math.round(now - bellAt)
@@ -153,7 +154,7 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
     burstFx(ax, ay, [settings.color, '#ffd23f', '#ffffff', '#c98a4b'])
     hitmarkerFx(ax, ay)
     textFx(ax, ay, `${ms} ms`, '#ffffff')
-    say(['Preso! Gli è volato il cappello', 'Che riflessi!', 'Più veloce del vento!'][me % 3], 1800)
+    say([t('Preso! Gli è volato il cappello'), t('Che riflessi!'), t('Più veloce del vento!')][me % 3], 1800)
     next()
   }
 
@@ -162,24 +163,24 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
     $('portrait')!.hidden = size.w >= size.h
     if (phase === 'attesa' && !readyShown && now > bellAt - 1300) {
       readyShown = true
-      say('Attenti...', 0, 'huge')
+      say(t('Attenti...'), 0, 'huge')
     }
     if (phase === 'attesa' && now >= bellAt) {
       phase = 'duello'
       play('bell')
-      say('Ora!', 600, 'huge')
+      say(t('Ora!'), 600, 'huge')
     }
     if (phase === 'duello' && now - bellAt > limit) {
       if (!hasBandit()) {
         // passava solo la signora Rosina: brava che non hai sparato, si rifà il round
-        say('Brava! Era solo la signora Rosina', 1800)
+        say(t('Brava! Era solo la signora Rosina'), 1800)
         next(false, true)
       } else {
         look = 'bang'
         lookAt = now
         play('bang')
         navigator.vibrate?.([60, 40, 60])
-        lose('BANG! Baffone è stato più veloce')
+        lose(t('BANG! Baffone è stato più veloce'))
       }
     }
     $('flash')!.style.opacity = look === 'bang' ? String(Math.max(0, 0.6 - (now - lookAt) / 900)) : '0'
@@ -228,7 +229,7 @@ export async function playDuel(diff: Diff, arcade: boolean, onEnd: (r: DuelResul
 }
 
 // La signora Rosina: vestito a campana, cappellino col fiore e ombrellino. Passa di lì: non va colpita.
-function lady(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'offesa', t: number) {
+function lady(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'offesa', time: number) {
   const u = h / 100
   c.lineJoin = 'round'
   c.lineWidth = Math.max(1.5, u * 1.2)
@@ -290,11 +291,11 @@ function lady(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'offesa',
   shape('#ffd23f', () => c.ellipse(0, -97 * u, 14 * u, 3 * u, 0, 0, Math.PI * 2))
   shape('#ffd23f', () => c.roundRect(-7 * u, -104 * u, 14 * u, 7 * u, 3 * u))
   shape('#ff5a5f', () => c.arc(6 * u, -101 * u, 3 * u, 0, Math.PI * 2))
-  if (look === 'offesa' && t < 1.5) {
+  if (look === 'offesa' && time < 1.5) {
     c.fillStyle = '#ffffff'
     c.font = `800 ${9 * u}px 'Baloo 2 Variable', system-ui, sans-serif`
     c.textAlign = 'center'
-    c.fillText('Ehi!', 0, -122 * u)
+    c.fillText(t('Ehi!'), 0, -122 * u)
   }
 }
 

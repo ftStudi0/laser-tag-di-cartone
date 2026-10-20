@@ -1,110 +1,113 @@
-# Laser tag di cartone
+# Cardboard Laser Tag
 
-Giochi di tiro in realtà aumentata da fare in casa. Il telefono si monta su un fucile di cartone fatto a mano: la fotocamera inquadra la stanza, al centro dello schermo c'è il mirino e il grilletto è una leva di cartone che tocca lo schermo.
+**English** · [Italiano](README.it.md)
 
-È una web app: non serve installare niente dagli store e non servono account. È nata per due bambine di 9 e 10 anni: un adulto costruisce i fucili e fa da regista.
+Augmented reality shooting games to play at home. Your phone goes into a handmade cardboard blaster: the camera looks at the room, the crosshair sits in the middle of the screen, and the trigger is a cardboard lever that touches the screen.
 
-![Anatre al volo: il gioco in azione](docs/img/demo.gif)
+It is a web app: nothing to install from an app store and no accounts. It speaks English and Italian, picks the phone's language on its own, and you can switch in Settings. It was made for two girls aged 9 and 10: an adult builds the blasters and acts as the host.
 
-Il [video completo](docs/video/demo.mp4) (un minuto) mostra il menu, le anatre al volo, il chiosco del luna park e il duello nel Far West. È registrato sul computer, con una stanza disegnata al posto della fotocamera.
+![Laser tag: tagging a friend wearing her marker](docs/img/demo.gif)
 
-![Il menu del gioco](docs/img/menu.png)
+The [full video](docs/video/demo.mp4) (70 seconds) shows the menu, a laser tag game between two phones, flying ducks, the fairground stall and the Wild West duel. It was recorded on a computer with the app in Italian, using a drawn room and a cardboard friend instead of the camera.
 
-## Cosa si può fare
+![The game menu](docs/img/menu.png)
 
-**Da sole o da soli**, anche senza rete:
+## What you can play
 
-- **Bersagli intorno**: palloncini, stelle, mostriciattoli, lattine o zombi buffi compaiono nella stanza, davanti, di lato e dietro. Il gattino col cuore non si colpisce.
-- **Chiosco del luna park**: tre file di bersagli che scorrono, 20 colpi e un premio alla fine.
-- **Tiro al piattello**: i piattelli volano ad arco da un lato all'altro e vanno presi prima che ricadano.
-- **Anatre al volo**: come Duck Hunt, le anatre escono dall'erba e volano a zig zag. Se scappano, il cane se la ride.
-- **Duello nel Far West**: al suono della campana spunta il bandito Baffone, e va colpito prima che dalla sua rivoltella giocattolo esca la bandierina BANG. In Difficile passa anche la signora Rosina, che non va colpita.
-- **Arcade**, per tutti i giochi: si perde un colpo solo quando si sbaglia e si va avanti finché ne restano.
+**On your own**, even offline:
 
-**In gruppo**, con un telefono che fa da regista:
+- **Targets all around**: balloons, stars, little monsters, cans or silly zombies pop up around the room, in front, to the sides and behind you. Don't hit the kitten with the heart.
+- **Fairground stall**: three rows of moving targets, 20 shots and a prize at the end.
+- **Clay shooting**: clays fly in an arc from one side to the other; hit them before they fall.
+- **Flying ducks**: like Duck Hunt, ducks pop out of the grass and zigzag through the air. If they get away, the dog laughs at you.
+- **Wild West duel**: when the bell rings, the bandit Big Mustache appears. Hit him before the BANG flag pops out of his toy revolver. On Hard, Mrs. Rosie walks by too: don't hit her.
+- **Arcade**, for every game: you only lose a shot when you miss, and you keep going while you have shots left.
 
-- **Laser tag**: ci si colpisce a vicenda mirando ai marker stampati sul petto e sulla schiena. Tutti contro tutti o a squadre, con i cuori, il "fuori gioco" e il rientro.
-- **Sfida a bersagli**: la stessa sequenza di bersagli per tutti e la classifica in diretta.
-- **Bersagli condivisi**: gli stessi bersagli nello stesso punto della stanza per tutti, e chi colpisce per primo prende il punto.
+**In a group**, with one phone as the host:
 
-Il regista crea la partita, mostra un codice di 4 lettere e un QR, sceglie il gioco e fa partire tutti insieme. Può giocare anche lui o fare solo da arbitro, per esempio con il telefono di un genitore.
+- **Laser tag**: tag each other by aiming at the markers printed on chest and back. Free for all or in teams, with hearts, "out of the game" and coming back in.
+- **Target challenge**: the same sequence of targets for everyone, with a live leaderboard.
+- **Shared targets**: the same targets in the same spot of the room for everyone; whoever hits first gets the point.
 
-![La scelta del gioco](docs/img/gioca-da-sola.png)
+The host creates the game, shows a 4-letter code and a QR code, picks the game and starts everyone together. The host can play too, or just referee, for example from a parent's phone. Games last 3, 5 or 10 minutes.
 
-## Costruire il fucile
+![Choosing a game](docs/img/gioca-da-sola.png)
 
-Il progetto del fucile si scarica anche dall'app, nella schermata **Prepara il fucile**.
+## Build the blaster
 
-| File | Cosa contiene |
+You can also download the blaster plans from the app, on the **Set up your blaster** screen.
+
+| File | What's inside |
 |---|---|
-| [`docs/laser-tag-fucile-template.pdf`](docs/laser-tag-fucile-template.pdf) | Le parti da stampare su A4 al 100%, da ricalcare sul cartone, e i passaggi di montaggio |
-| [`docs/fucile-3d.html`](docs/fucile-3d.html) | Modello 3D interattivo, si apre nel browser |
-| [`docs/MATERIALI.md`](docs/MATERIALI.md) | Lista dei materiali per tre fucili |
-| [`docs/FUCILE.md`](docs/FUCILE.md) | Le cose del fucile che contano per il gioco |
+| [`docs/cardboard-blaster-template.pdf`](docs/cardboard-blaster-template.pdf) | The parts to print on A4 at 100% and trace onto cardboard, plus the assembly steps ([in Italian](docs/laser-tag-fucile-template.pdf)) |
+| [`docs/fucile-3d.html`](docs/fucile-3d.html) | Interactive 3D model, opens in the browser |
+| [`docs/MATERIALS.md`](docs/MATERIALS.md) | Materials for three blasters |
+| [`docs/BLASTER.md`](docs/BLASTER.md) | What about the blaster matters to the game |
 
-Il fucile tiene telefoni fino a 175 x 82 x 13 mm con la cover. Il taglierino e la colla a caldo li usa un adulto.
+The blaster holds phones up to 175 x 82 x 13 mm with the case on. An adult uses the craft knife and the hot glue.
 
-## Privacy e sicurezza
+## Privacy and safety
 
-- Le immagini della fotocamera non lasciano mai il telefono: i marker si riconoscono sul telefono stesso, in un Web Worker.
-- Al server arrivano solo eventi di gioco, per esempio "colpito il marker 3". Non ci sono account e non si salva niente oltre la partita. La stanza si cancella da sola 30 minuti dopo che è rimasta vuota.
-- I record dei giochi da soli restano sul telefono.
-- Si gioca camminando, non correndo: il gioco lo ricorda se sente scossoni. Il linguaggio è non violento: "colpito" e "fuori gioco", mai altro.
+- Camera images never leave the phone: markers are recognized on the phone itself, in a Web Worker.
+- The server only receives game events, such as "marker 3 was hit". There are no accounts and nothing is kept after the game. A room deletes itself 30 minutes after it is left empty.
+- High scores of the solo games stay on the phone.
+- Walk, don't run: the game reminds you if it feels bumps. The language is non-violent: "hit" and "out of the game", nothing else.
 
-## Telefoni
+## Phones
 
-Provato su iPhone 17 Pro, iPhone 14 Pro, Xiaomi Redmi A5 (bussola senza giroscopio) e Samsung Galaxy A02s come regista. Per i giochi a bersagli serve un telefono che sappia quando ti giri (giroscopio, o almeno la bussola). Il laser tag usa solo la fotocamera e funziona su tutti.
+Tested on iPhone 17 Pro, iPhone 14 Pro, Xiaomi Redmi A5 (compass, no gyroscope) and Samsung Galaxy A02s as the host. The target games need a phone that knows when you turn (a gyroscope, or at least a compass). Laser tag only uses the camera and works on all of them.
 
-## Provarlo sul tuo computer
+## Try it on your computer
 
-Serve Node 22 o superiore.
+You need Node 22 or newer.
 
 ```sh
 npm install
-npm run dev        # server HTTPS locale, raggiungibile anche dalla rete Wi-Fi
-npm run check      # controllo della logica (orientamento, bersagli, record, regole del laser tag)
+npm run dev        # local HTTPS server, reachable from your Wi-Fi too
+npm run check      # logic checks (orientation, targets, high scores, laser tag rules, translations)
 ```
 
-`npm run dev` fa girare in locale anche il server delle partite (Worker e Durable Object, con il plugin Cloudflare per Vite).
+`npm run dev` also runs the game server locally (Worker and Durable Object, through the Cloudflare plugin for Vite).
 
-Fotocamera e sensori funzionano solo in HTTPS. Per aprire il gioco dal telefono:
+Camera and sensors only work over HTTPS. To open the game on a phone:
 
-1. **Tunnel HTTPS (consigliato)**: installa una volta `cloudflared` (`brew install cloudflared`), poi con `npm run dev` acceso:
+1. **HTTPS tunnel (recommended)**: install `cloudflared` once (`brew install cloudflared`), then with `npm run dev` running:
    ```sh
    cloudflared tunnel --url https://localhost:5173 --no-tls-verify
    ```
-   Apri sul telefono l'indirizzo `https://...trycloudflare.com` che compare. Non serve un account.
-2. **Stessa rete Wi-Fi**: apri l'indirizzo `Network` stampato da `npm run dev` e accetta l'avviso sul certificato.
+   Open the `https://...trycloudflare.com` address it prints on the phone. No account needed.
+2. **Same Wi-Fi network**: open the `Network` address printed by `npm run dev` and accept the certificate warning.
 
-Su iPhone conviene aggiungerlo alla schermata Home (Condividi, poi Aggiungi alla schermata Home): così si gioca a schermo intero.
+On iPhone, add it to the Home Screen (Share, then Add to Home Screen) to play full screen.
 
-## Pubblicarlo gratis su Cloudflare
+## Publish it for free on Cloudflare
 
-Serve un account Cloudflare gratuito.
+You need a free Cloudflare account.
 
 ```sh
-npx wrangler login   # una volta sola
-npm run deploy       # build e pubblicazione
+npx wrangler login   # once
+npm run deploy       # build and publish
 ```
 
-Il gioco va su `https://laser-tag-cartone.<tuo-sottodominio>.workers.dev`. Il Durable Object usa l'archivio SQLite, l'unico disponibile nel piano gratuito. Pubblicare una nuova versione scollega chi sta giocando in quel momento.
+The game goes to `https://laser-tag-cartone.<your-subdomain>.workers.dev`. The Durable Object uses SQLite storage, the only kind available on the free plan. Publishing a new version disconnects whoever is playing at that moment.
 
-## Come è fatto
+## How it's made
 
-- **Frontend**: Vite e TypeScript senza framework, Three.js per gli zombi in 3D, js-aruco2 per i marker, PWA che funziona anche offline.
-- **Server**: un Cloudflare Worker con un Durable Object per ogni partita, WebSocket con ibernazione. Le regole del laser tag stanno in `src/rules.ts`, condivise tra telefono e server, e il server ha sempre l'ultima parola.
-- **Nessun database** e nessun account.
+- **Frontend**: Vite and TypeScript with no framework, Three.js for the 3D zombies, js-aruco2 for the markers, a PWA that also works offline. Texts go through `t()` in `src/i18n.ts`: the Italian text is the key and the English lives in `src/en/`.
+- **Server**: a Cloudflare Worker with one Durable Object per game, WebSockets with hibernation. The laser tag rules live in `src/rules.ts`, shared by phone and server, and the server always has the last word.
+- **No database** and no accounts.
 
-| Percorso | Cosa contiene |
+| Path | What's inside |
 |---|---|
-| `src/` | Il gioco: menu, giochi, sensori, riconoscimento dei marker, lobby |
-| `worker/` | Il server delle partite |
-| `docs/PROMPT.md` | La specifica completa da cui è nato il progetto |
-| `CLAUDE.md` | Le istruzioni per Claude Code |
+| `src/` | The game: menus, games, sensors, marker recognition, lobby |
+| `worker/` | The game server |
+| `scripts/template-en/` | Turns the Italian blaster template into the English one |
+| `docs/PROMPT.md` | The full spec the project started from (in Italian) |
+| `CLAUDE.md` | Instructions for Claude Code |
 
-Il gioco è stato scritto con [Claude Code](https://claude.com/claude-code), partendo da `docs/PROMPT.md` e procedendo una milestone alla volta, provando ogni passo sui telefoni veri.
+The game was written with [Claude Code](https://claude.com/claude-code), starting from `docs/PROMPT.md` and going one milestone at a time, testing every step on real phones.
 
-## Licenza
+## License
 
-- Il **codice** del gioco ha la licenza [MIT](LICENSE): puoi riusarlo liberamente, citando l'origine.
-- Il **fucile e i documenti** in `docs/` (template PDF, modello 3D, materiali e guide) hanno la licenza [CC BY-NC-SA 4.0](docs/LICENSE.md): puoi costruirlo, modificarlo e condividerlo citando il progetto, ma non venderlo.
+- The game **code** is [MIT](LICENSE): reuse it freely, crediting the source.
+- The **blaster and documents** in `docs/` (PDF template, 3D model, materials and guides) are [CC BY-NC-SA 4.0](docs/LICENSE.md): you can build, modify and share it crediting the project, but not sell it.

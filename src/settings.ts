@@ -30,6 +30,7 @@ const DEFAULTS = {
   heat: false, // il fucile si scalda dopo 10 colpi
   solo: 'intorno' as 'intorno' | 'chiosco' | 'piattello' | 'anatre' | 'duello', // gioco da soli scelto
   arcade: false, // si perde un colpo solo sbagliando (nel duello: finché non sbagli)
+  lang: 'auto' as 'auto' | 'it' | 'en', // lingua della UI; cambiarla ricarica la pagina
 }
 export type Settings = typeof DEFAULTS
 

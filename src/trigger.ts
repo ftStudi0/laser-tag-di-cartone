@@ -1,6 +1,7 @@
 import { play } from './audio.ts'
 import { COOL_MS } from './rules.ts'
 import { say } from './stage.ts'
+import { t } from './i18n.ts'
 
 // Grilletto conduttivo: qualsiasi tocco è uno sparo, tranne sui pulsanti.
 // Debounce di 150 ms per i rimbalzi della striscia e niente spari extra con più dita.
@@ -45,7 +46,7 @@ export function heat(max: number) {
       if (--left === 0) {
         hotUntil = now + COOL_MS
         play('oops')
-        say('Il fucile scotta! Si raffredda...', COOL_MS, 'warn')
+        say(t('Il fucile scotta! Si raffredda...'), COOL_MS, 'warn')
       }
       return true
     },
@@ -53,7 +54,7 @@ export function heat(max: number) {
       if (max && left === 0 && now >= hotUntil) {
         left = max
         play('reload')
-        say('Fucile pronto!', 800)
+        say(t('Fucile pronto!'), 800)
       }
     },
     // barrette accese: mentre si raffredda si riaccendono poco a poco

@@ -1,3 +1,4 @@
+import { t } from './i18n.ts'
 import { deviceQuat, forward, pitchOf, qNlerp, yawOf, type Quat } from './math.ts'
 
 // giroscopio: orientamento completo e reattivo. bussola: c'è l'orientamento ma non il giroscopio (Redmi A5).
@@ -88,9 +89,9 @@ export async function startSensors(): Promise<Mode> {
 }
 
 export const MODE_TEXT: Record<Mode, string> = {
-  giroscopio: 'Giroscopio attivo',
-  bussola: 'Senza giroscopio: uso la bussola',
-  nessuno: 'Senza giroscopio né bussola',
-  negato: 'Sensori non permessi',
-  spenti: 'Sensori da attivare',
+  giroscopio: t('Giroscopio attivo'),
+  bussola: t('Senza giroscopio: uso la bussola'),
+  nessuno: t('Senza giroscopio né bussola'),
+  negato: t('Sensori non permessi'),
+  spenti: t('Sensori da attivare'),
 }
