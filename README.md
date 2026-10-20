@@ -99,3 +99,8 @@ Il gioco va su `https://laser-tag-cartone.<tuo-sottodominio>.workers.dev`. Il Du
 | `CLAUDE.md` | Le istruzioni per Claude Code |
 
 Il gioco è stato scritto con [Claude Code](https://claude.com/claude-code), partendo da `docs/PROMPT.md` e procedendo una milestone alla volta, provando ogni passo sui telefoni veri.
+
+## Licenza
+
+- Il **codice** del gioco ha la licenza [MIT](LICENSE): puoi riusarlo liberamente, citando l'origine.
+- Il **fucile e i documenti** in `docs/` (template PDF, modello 3D, materiali e guide) hanno la licenza [CC BY-NC-SA 4.0](docs/LICENSE.md): puoi costruirlo, modificarlo e condividerlo citando il progetto, ma non venderlo.
