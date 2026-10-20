@@ -23,6 +23,7 @@ export type Target = {
   // piattelli: salgono con velocità vel (rad/s) e ricadono
   vel?: number
   launched?: boolean
+  duck?: boolean
 }
 
 // r: raggio del bersaglio, life: secondi prima che voli via, every: secondi tra un bersaglio e l'altro,
@@ -138,7 +139,7 @@ export function boothSchedule(seed: number, diff: Diff, sizeMul = 1, duration = 
 
 // Tiro al piattello: i piattelli partono da un lato, volano ad arco davanti a te e ricadono dall'altra parte.
 export const CLAY = { g: 0.5, el0: -6 * D, dist: 7, duration: 60 } // g in rad/s², il piattello parte 6 gradi sotto l'orizzonte
-const CDIFF = { facile: { speed: 0.32, every: 2.6, r: 0.26, double: 0 }, media: { speed: 0.42, every: 2.2, r: 0.21, double: 0.3 }, difficile: { speed: 0.52, every: 1.8, r: 0.17, double: 0.5 } }
+const CDIFF = { facile: { speed: 0.32, every: 2.6, r: 0.36, double: 0 }, media: { speed: 0.42, every: 2.2, r: 0.3, double: 0.3 }, difficile: { speed: 0.52, every: 1.8, r: 0.24, double: 0.5 } }
 export const clayEl = (t: Target, now: number) => {
   const dt = now - t.born
   return t.el + t.vel! * dt - (CLAY.g * dt * dt) / 2
@@ -161,6 +162,38 @@ export function claySchedule(seed: number, diff: Diff, sizeMul = 1, duration = C
         vaz: -side * d.speed * (kind === 'veloce' ? 1.4 : 1) * (0.85 + rnd() * 0.3), tint: 0, vel,
       })
     }
+  }
+  return out
+}
+
+// Anatre al volo, come Duck Hunt: escono dall'erba, volano a zig zag e salgono; se non le prendi scappano in alto.
+export const DUCK = { el0: -9 * D, half: 30 * D, dist: 6, duration: 60, flee: 1.4 } // flee: rad/s quando scappano
+const DDIFF = { facile: { speed: 0.22, climb: 0.07, life: 6, every: 2.4, r: 0.3 }, media: { speed: 0.32, climb: 0.09, life: 4.8, every: 2, r: 0.25 }, difficile: { speed: 0.44, climb: 0.11, life: 3.8, every: 1.6, r: 0.2 } }
+
+// Posizione e verso dell'anatra: rimbalza tra -half e +half; colpita o scaduta vola dritta in alto.
+export function duckAt(t: Target, now: number): { az: number; el: number; face: number; flee: number } {
+  const since = t.hitAt ?? t.born + t.life
+  const dt = Math.min(now, since) - t.born
+  const W = DUCK.half
+  const p = ((((t.az + t.vaz * dt + W) % (4 * W)) + 4 * W) % (4 * W))
+  const az = p < 2 * W ? p - W : 3 * W - p
+  const face = Math.sign(t.vaz) * (p < 2 * W ? 1 : -1)
+  const flee = Math.max(0, now - since)
+  return { az, el: t.el + t.vel! * dt + 0.025 * Math.sin(dt * 5) + DUCK.flee * flee, face, flee }
+}
+
+export function duckSchedule(seed: number, diff: Diff, sizeMul = 1, duration = DUCK.duration): Target[] {
+  const d = DDIFF[diff]
+  const rnd = mulberry32(seed)
+  const out: Target[] = []
+  for (let t = 1.5, id = 0; t < duration - 2; t += d.every * (0.8 + rnd() * 0.4), id++) {
+    const roll = rnd()
+    const kind: Kind = roll < 0.08 ? 'dorato' : roll < 0.3 ? 'veloce' : 'normale'
+    out.push({
+      id, kind, az: (rnd() * 2 - 1) * DUCK.half * 0.8, el: DUCK.el0, born: t, life: d.life * (kind === 'dorato' ? 0.7 : 1),
+      r: d.r * sizeMul * (kind === 'dorato' ? 0.85 : 1), dist: DUCK.dist,
+      vaz: (rnd() < 0.5 ? -1 : 1) * d.speed * (kind === 'veloce' ? 1.5 : 1), tint: 0, vel: d.climb * (0.8 + rnd() * 0.4), duck: true,
+    })
   }
   return out
 }

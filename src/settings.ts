@@ -28,7 +28,7 @@ const DEFAULTS = {
   z3d: false, // zombi disegnati in 3D
   marker: 1, // numero del proprio marker stampato
   heat: false, // il fucile si scalda dopo 10 colpi
-  solo: 'intorno' as 'intorno' | 'chiosco' | 'piattello' | 'duello', // gioco da soli scelto
+  solo: 'intorno' as 'intorno' | 'chiosco' | 'piattello' | 'anatre' | 'duello', // gioco da soli scelto
   arcade: false, // si perde un colpo solo sbagliando (nel duello: finché non sbagli)
 }
 export type Settings = typeof DEFAULTS
@@ -57,7 +57,7 @@ export function insertRecord(list: Rec[], r: Rec): [Rec[], number] {
   return [l, l.indexOf(r)]
 }
 
-export type RecGame = 'tiro' | 'zombi' | 'chiosco' | 'piattello'
+export type RecGame = 'tiro' | 'zombi' | 'chiosco' | 'piattello' | 'anatre'
 export const recordKey = (diff: Diff, duration: number, game: RecGame = 'tiro') => `lt:rec:${game}:${diff}:${duration}`
 export const loadRecords = (key: string): Rec[] => read(key, [])
 

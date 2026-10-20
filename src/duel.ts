@@ -299,7 +299,7 @@ function lady(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'offesa',
 }
 
 // Baffone di cartone: cappello largo, baffoni, gilet e rivoltella giocattolo con la bandierina. Disegnato con i piedi in (0, 0), alto h px.
-function bandit(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'preso' | 'bang', t: number) {
+export function bandit(c: CanvasRenderingContext2D, h: number, look: 'pronto' | 'preso' | 'bang', t: number) {
   const u = h / 100
   c.lineJoin = 'round'
   c.lineWidth = Math.max(1.5, u * 1.2)

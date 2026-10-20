@@ -6,13 +6,13 @@ import { recordKey, saveRecord, settings } from './settings.ts'
 import {
   aimPoint, beamFx, burstFx, closeStage, ctx, drawCrosshair, drawFx, hitmarkerFx, hud, openStage, say, size, sparkFx, textFx, videoSize, view,
 } from './stage.ts'
-import { ARCADE, azAt, BOOTH, boothSchedule, CLAY, clayEl, claySchedule, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
+import { ARCADE, azAt, BOOTH, boothSchedule, CLAY, clayEl, claySchedule, DUCK, duckAt, duckSchedule, POINTS, schedule, trainingTarget, zDist, ZOMBIE, zombieSchedule, type Diff, type Target, type Theme } from './targets.ts'
 import { drawTarget, drawZombie, GOLD, TINTS } from './themes.ts'
 import type { Z3 } from './zombie3d.ts'
 import { heat, onTrigger } from './trigger.ts'
 import { esc } from './ui.ts'
 
-export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean; booth?: boolean; clay?: boolean; arcade?: boolean } // duration 0 = allenamento; heat: il fucile si scalda; booth: chiosco del luna park; clay: tiro al piattello
+export type GameOpts = { theme: Theme; diff: Diff; duration: number; heat: boolean; booth?: boolean; clay?: boolean; ducks?: boolean; arcade?: boolean } // duration 0 = allenamento; heat: il fucile si scalda; booth: chiosco del luna park; clay: tiro al piattello; ducks: anatre al volo
 export type Result = GameOpts & { score: number; shots: number; good: number; best: number; rank: number }
 // Sfida a bersagli: stesso gioco, ma seme, tempo e pausa arrivano dal server e i punti vanno a lui.
 export type Multi = {
@@ -47,6 +47,8 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   if (booth) opts = { ...opts, duration: BOOTH.duration, heat: false, theme: opts.theme === 'zombi' ? 'palloncini' : opts.theme }
   const clay = !!opts.clay
   if (clay) opts = { ...opts, duration: CLAY.duration, heat: false }
+  const ducks = !!opts.ducks
+  if (ducks) opts = { ...opts, duration: DUCK.duration, heat: false }
   const arcade = !!opts.arcade && !multi
   if (arcade) opts = { ...opts, duration: ARCADE.duration, heat: false }
   const training = opts.duration === 0 && !multi
@@ -55,7 +57,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   const gun = heat(opts.heat && !training ? AMMO : 0)
   const zombi = opts.theme === 'zombi'
   const seed = multi?.seed ?? (Math.random() * 2 ** 32) >>> 0
-  const targets: Target[] = training ? [] : booth ? boothSchedule(seed, opts.diff, sizeMul, opts.duration) : clay ? claySchedule(seed, opts.diff, sizeMul, opts.duration) : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
+  const targets: Target[] = training ? [] : booth ? boothSchedule(seed, opts.diff, sizeMul, opts.duration) : clay ? claySchedule(seed, opts.diff, sizeMul, opts.duration) : ducks ? duckSchedule(seed, opts.diff, sizeMul, opts.duration) : (zombi ? zombieSchedule : schedule)(seed, opts.diff, opts.duration, sizeMul)
   const color = multi?.color ?? settings.color
   const H = settings.gunH // altezza degli occhi sul pavimento virtuale
   let z3: { render: (items: Z3[], ...rest: any[]) => void; dispose: () => void } | null = null
@@ -76,6 +78,7 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
   let lives = ARCADE.shots // Arcade: i colpi che si possono ancora sbagliare
   let raf = 0
   let fps = 0
+  let dogAt = -1e9 // quando è spuntato il cane
 
   hud.innerHTML = `
     <div class="hud-tl pill" data-ammo></div>
@@ -145,6 +148,10 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
 
   // Direzione e distanza del punto da colpire. Gli zombi camminano sul pavimento, H metri sotto gli occhi.
   function geo(t: Target): { dir: Vec3; dist: number } {
+    if (t.duck) {
+      const p = duckAt(t, gameT)
+      return { dir: dirFrom(yaw0 + p.az, p.el), dist: t.dist }
+    }
     if (t.d0 === undefined) return { dir: dirFrom(yaw0 + azAt(t, gameT), t.vel === undefined ? t.el : clayEl(t, gameT)), dist: t.dist }
     const d = zDist(t, gameT)
     const h = dirFrom(yaw0 + t.az, 0)
@@ -205,10 +212,11 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     streak++
     best = Math.max(best, streak)
     score += pts
-    play(clay ? 'crack' : 'pop_' + opts.theme)
+    play(clay ? 'crack' : ducks ? 'quack' : 'pop_' + opts.theme)
+    if (ducks) say(['Qua qua!', 'Che spavento!', 'Scappa via!'][good % 3], 600)
     if (zombi) say(['Preso!', 'Che solletico!', 'Puff!'][good % 3], 600)
     play('hit')
-    burstFx(ax, ay, clay ? [t.kind === 'dorato' ? GOLD : '#ff8a3d', '#c4561d', '#ffffff', color] : [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
+    burstFx(ax, ay, ducks ? ['#ffffff', '#f4e9d0', t.kind === 'dorato' ? GOLD : '#ffd23f', color] : clay ? [t.kind === 'dorato' ? GOLD : '#ff8a3d', '#c4561d', '#ffffff', color] : [color, t.kind === 'dorato' ? GOLD : TINTS[t.tint], '#ffffff', '#ffd23f'])
     hitmarkerFx(ax, ay)
     textFx(ax, ay, `+${pts}`, t.kind === 'dorato' ? GOLD : '#ffffff')
     report()
@@ -322,6 +330,15 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     }
 
     if (phase === 'gioco') gun.tick(now)
+    // anatra scappata: il cane spunta dall'erba e ride
+    if (ducks && phase === 'gioco')
+      for (const tg of targets)
+        if (!tg.launched && tg.hitAt === undefined && gameT >= tg.born + tg.life) {
+          tg.launched = true
+          dogAt = gameT
+          play('laugh')
+          say('Scappata! Il cane se la ride', 1200)
+        }
     // il "tunk" della macchina che lancia i piattelli
     if (clay && phase === 'gioco')
       for (const tg of targets)
@@ -344,11 +361,26 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     let anyVisible = false
     const zs: { tg: Target; d: number; pop: number }[] = []
     if (booth && phase !== 'mira') drawBooth(v)
+    if (ducks && phase !== 'mira') drawGrass(v, t)
     if (phase === 'gioco') {
       for (const tg of targets) {
         if (tg.born > gameT) continue
         const end = tg.born + tg.life
         const pop = tg.hitAt !== undefined ? (gameT - tg.hitAt) / 0.25 : 0 // zombi colpito: si rimpicciolisce e sparisce
+        if (ducks) {
+          const d = duckAt(tg, gameT)
+          if (d.flee > 1.2) continue
+          const p = project(sensors.q, geo(tg).dir, v)
+          if (!p) continue
+          const r = (v.f * (tg.r / tg.dist)) / p.depth
+          if (alive(tg) && p.x > -r && p.x < size.w + r && p.y > -r && p.y < size.h + r) anyVisible = true
+          else if (alive(tg)) {
+            const ang = Math.acos(Math.max(-1, Math.min(1, dot(fwd, geo(tg).dir))))
+            if (!nearest || ang < nearest.a) nearest = { a: ang, d: screenDir(sensors.q, geo(tg).dir) }
+          }
+          drawDuck(ctx, p.x, p.y, r, gameT - tg.born, tg.kind, d.face, d.flee > 0)
+          continue
+        }
         if (tg.hitAt !== undefined && (!zombi || tg.caught || pop >= 1)) continue
         if (!zombi && gameT >= end + FLY) continue
         const g = geo(tg)
@@ -446,6 +478,32 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     ctx.restore()
   }
 
+  // Il prato delle anatre: una striscia d'erba con i ciuffi davanti a te, e il cane che spunta quando un'anatra scappa.
+  function drawGrass(v: ReturnType<typeof view>, t: number) {
+    const at = (a: number, e: number) => project(sensors.q, dirFrom(yaw0 + a, e), v)
+    const h = DUCK.half + 12 * D, top = DUCK.el0 + 1 * D, bottom = DUCK.el0 - 9 * D
+    const dog = gameT - dogAt
+    if (dog < 1.6) {
+      const up = Math.min(1, dog / 0.25, (1.6 - dog) / 0.25) // sale, ride, riscende
+      const p = at(0, top + (6 * up - 5) * D)
+      const p2 = at(0, top + 5 * D)
+      if (p && p2) drawDog(ctx, p.x, p.y, Math.abs(p.y - p2.y) * 0.9, t)
+    }
+    ctx.save()
+    const n = 24
+    for (let i = 0; i < n; i++) {
+      const a1 = -h + (2 * h * i) / n, a2 = -h + (2 * h * (i + 1)) / n
+      const pts = [at(a1, bottom), at(a1, top), at((a1 + a2) / 2, top + (i % 3 ? 1.5 : 3) * D), at(a2, top), at(a2, bottom)]
+      if (pts.some((p) => !p)) continue
+      ctx.fillStyle = i % 2 ? '#5cb85c' : '#4cae4c'
+      ctx.beginPath()
+      pts.forEach((p) => ctx.lineTo(p!.x, p!.y))
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+
   // Freccia sul bordo verso il bersaglio più vicino fuori schermo.
   function arrow([dx, dy]: [number, number]) {
     const n = Math.hypot(dx, dy) || 1
@@ -515,13 +573,13 @@ export async function playSolo(opts: GameOpts, onEnd: (r: Result | null) => void
     if (aborted || training) return onEnd(null)
     play('end')
     const name = settings.name || 'Senza nome'
-    const rank = saveRecord(recordKey(opts.diff, arcade ? 0 : opts.duration, booth ? 'chiosco' : clay ? 'piattello' : zombi ? 'zombi' : 'tiro'), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
+    const rank = saveRecord(recordKey(opts.diff, arcade ? 0 : opts.duration, booth ? 'chiosco' : clay ? 'piattello' : ducks ? 'anatre' : zombi ? 'zombi' : 'tiro'), { name, score, acc: shots ? good / shots : 0, streak: best, date: Date.now() })
     onEnd({ ...opts, score, shots, good, best, rank })
   }
 }
 
 // Il piattello: un disco arancione visto un po' di sbieco, che gira mentre vola.
-function drawClay(c: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, kind: string) {
+export function drawClay(c: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, kind: string) {
   const col = kind === 'dorato' ? GOLD : '#ff8a3d'
   const tilt = 0.45 + 0.15 * Math.sin(t * 9)
   c.save()
@@ -540,6 +598,92 @@ function drawClay(c: CanvasRenderingContext2D, x: number, y: number, r: number, 
   c.fillStyle = 'rgba(255,255,255,0.45)'
   c.beginPath()
   c.ellipse(0, 0, r * 0.45, r * tilt * 0.45, 0, 0, Math.PI * 2)
+  c.fill()
+  c.restore()
+}
+
+// L'anatra di profilo: corpo, testa verde, becco arancione e ala che sbatte. Quando scappa sbatte più forte.
+export function drawDuck(c: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, kind: string, face: number, flee: boolean) {
+  const body = kind === 'dorato' ? GOLD : kind === 'veloce' ? '#5b8def' : '#a0703c'
+  const flap = Math.sin(t * (flee ? 30 : 16))
+  c.save()
+  c.translate(x, y)
+  c.scale(face < 0 ? -1 : 1, 1)
+  c.lineWidth = Math.max(1.5, r * 0.08)
+  c.strokeStyle = 'rgba(40,30,60,0.7)'
+  c.fillStyle = body
+  c.beginPath()
+  c.ellipse(0, 0, r, r * 0.6, 0, 0, Math.PI * 2)
+  c.fill()
+  c.stroke()
+  c.fillStyle = kind === 'dorato' ? '#fff3b0' : '#2e9e5b'
+  c.beginPath()
+  c.arc(r * 0.85, -r * 0.5, r * 0.38, 0, Math.PI * 2)
+  c.fill()
+  c.stroke()
+  c.fillStyle = '#ff9f1c'
+  c.beginPath()
+  c.moveTo(r * 1.15, -r * 0.55)
+  c.lineTo(r * 1.6, -r * 0.42)
+  c.lineTo(r * 1.15, -r * 0.3)
+  c.closePath()
+  c.fill()
+  c.stroke()
+  c.fillStyle = '#fff'
+  c.beginPath()
+  c.arc(r * 0.95, -r * 0.6, r * 0.12, 0, Math.PI * 2)
+  c.fill()
+  c.fillStyle = '#222'
+  c.beginPath()
+  c.arc(r * 0.98, -r * 0.6, r * 0.06, 0, Math.PI * 2)
+  c.fill()
+  c.fillStyle = kind === 'dorato' ? '#e0b000' : '#f4e9d0'
+  c.beginPath()
+  c.moveTo(-r * 0.3, -r * 0.1)
+  c.quadraticCurveTo(-r * 0.1, -r * (0.4 + 0.9 * flap), r * 0.4, -r * 0.1)
+  c.closePath()
+  c.fill()
+  c.stroke()
+  c.restore()
+}
+
+// Il cane che ride, solo la testa sopra l'erba: y è il mento, s l'altezza.
+function drawDog(c: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) {
+  const k = Math.sin(t * 20) * s * 0.03 // ridacchia
+  c.save()
+  c.translate(x, y + k)
+  c.lineWidth = Math.max(1.5, s * 0.04)
+  c.strokeStyle = 'rgba(40,30,60,0.7)'
+  c.fillStyle = '#7a4a24'
+  for (const sx of [-1, 1]) {
+    c.beginPath()
+    c.ellipse(sx * s * 0.38, -s * 0.62, s * 0.13, s * 0.3, sx * 0.3, 0, Math.PI * 2)
+    c.fill()
+    c.stroke()
+  }
+  c.fillStyle = '#c98a4b'
+  c.beginPath()
+  c.ellipse(0, -s * 0.5, s * 0.36, s * 0.42, 0, 0, Math.PI * 2)
+  c.fill()
+  c.stroke()
+  c.fillStyle = '#f4dcc0'
+  c.beginPath()
+  c.ellipse(0, -s * 0.28, s * 0.22, s * 0.16, 0, 0, Math.PI * 2)
+  c.fill()
+  c.fillStyle = '#222'
+  c.beginPath()
+  c.arc(0, -s * 0.38, s * 0.06, 0, Math.PI * 2)
+  c.fill()
+  c.lineWidth = Math.max(1.5, s * 0.035)
+  c.strokeStyle = '#222'
+  for (const sx of [-1, 1]) { // occhi chiusi dal ridere
+    c.beginPath()
+    c.arc(sx * s * 0.14, -s * 0.6, s * 0.06, Math.PI, 0)
+    c.stroke()
+  }
+  c.fillStyle = '#e8506e'
+  c.beginPath()
+  c.arc(0, -s * 0.24, s * 0.09, 0, Math.PI)
   c.fill()
   c.restore()
 }

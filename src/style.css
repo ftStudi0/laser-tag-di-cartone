@@ -4,6 +4,11 @@
   --ink: #2b2340;
   --muted: #6b6380;
   --line: #f0dcc0;
+  /* stile di plastilina: bordo chiaro, spessore sotto e luce in alto */
+  --edge: #ead5b8;
+  --track: #f6e7d2;
+  --clay: 0 5px 0 var(--edge), 0 10px 18px rgba(150, 90, 30, 0.12), inset 0 2px 0 rgba(255, 255, 255, 0.9);
+  --clay-down: 0 1px 0 var(--edge), 0 3px 8px rgba(150, 90, 30, 0.12), inset 0 2px 0 rgba(255, 255, 255, 0.9);
   /* bianco su --primary 3.9:1 (solo testo grande e grassetto), su --primary-strong 5:1 */
   --primary: #e0531f;
   --primary-strong: #c44619;
@@ -41,7 +46,8 @@
 html,
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100%;
+  background: radial-gradient(circle at 0 0, #ffdcbc 0, transparent 38%), radial-gradient(circle at 100% 0, #d6eaff 0, transparent 42%), var(--bg);
   color: var(--ink);
   font-family: 'Baloo 2 Variable', ui-rounded, system-ui, -apple-system, Roboto, sans-serif;
   font-size: 17px;
@@ -69,10 +75,11 @@ body.in-stage {
 
 h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 27px;
   line-height: 1;
-  font-weight: 800;
-  color: var(--primary-dark);
+  font-weight: 700;
+  color: var(--primary-strong);
+  letter-spacing: -0.5px;
 }
 h1 span {
   color: var(--ink);
@@ -80,11 +87,14 @@ h1 span {
 }
 h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.1;
 }
 h3 {
   margin: 14px 0 6px;
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--muted);
 }
 
@@ -101,10 +111,10 @@ h3 {
   flex-wrap: wrap;
   gap: 8px 16px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 14px;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-radius: 20px;
+  border-radius: 22px;
+  box-shadow: var(--clay);
 }
 .lbl {
   display: flex;
@@ -123,11 +133,12 @@ h3 {
   font-weight: 700;
   padding: 4px 12px;
   min-height: 44px;
-  border: 3px solid var(--line);
+  border: 0;
   border-radius: 14px;
   width: 160px;
-  background: var(--card);
+  background: var(--track);
   color: var(--ink);
+  box-shadow: inset 0 2px 4px rgba(150, 90, 30, 0.15);
   user-select: text;
   -webkit-user-select: text;
 }
@@ -141,11 +152,11 @@ h3 {
   border-radius: 50%;
   border: 3px solid #fff;
   background: var(--c);
-  box-shadow: 0 0 0 2px var(--line);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15), inset 0 -4px 0 rgba(0, 0, 0, 0.12);
   padding: 0;
 }
 .sw.on {
-  box-shadow: 0 0 0 3px var(--ink);
+  box-shadow: 0 0 0 3px var(--ink), inset 0 -4px 0 rgba(0, 0, 0, 0.12);
   transform: scale(1.1);
 }
 /* colore già preso da un'altra giocatrice */
@@ -179,9 +190,34 @@ button:disabled {
 .i {
   flex: none;
 }
-input[type='range'],
 input[type='checkbox'] {
   accent-color: var(--primary-strong);
+}
+/* slider grossi, da dito: pista incassata e pomello che sporge */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  margin: 12px 0;
+  border-radius: 99px;
+  background: var(--track);
+  box-shadow: inset 0 2px 4px rgba(150, 90, 30, 0.2);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 4px solid #fff;
+  box-shadow: 0 3px 0 var(--primary-dark), 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+input[type='range']::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 4px solid #fff;
 }
 
 /* menu: un pulsante grande per giocare, poi i gruppi */
@@ -192,10 +228,11 @@ input[type='checkbox'] {
   align-items: start;
 }
 .home .hero {
+  background: radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.22) 0 14%, transparent 14.5% 24%, rgba(255, 255, 255, 0.14) 24.5% 34%, transparent 34.5%), linear-gradient(135deg, #f2703a, #e0531f 55%, #d9436b);
   grid-row: span 2;
   align-self: stretch;
   min-height: 180px;
-  font-size: 30px;
+  font-size: 27px;
   gap: 6px;
 }
 .home .hero small {
@@ -265,6 +302,16 @@ input[type='checkbox'] {
     margin-top: 8px;
     font-size: 15px;
   }
+  .game canvas {
+    max-height: 58px;
+  }
+  .big.go {
+    min-height: 54px;
+    font-size: 24px;
+  }
+  .cta-bar {
+    padding-top: 6px;
+  }
   .chips {
     margin-top: 6px;
   }
@@ -298,7 +345,7 @@ input[type='checkbox'] {
   min-height: 68px;
   padding: 8px 16px;
   text-align: left;
-  line-height: 1.1;
+  line-height: 1.05;
 }
 .grid .big .i {
   grid-row: span 2;
@@ -316,18 +363,23 @@ input[type='checkbox'] {
   gap: 2px;
   min-height: 84px;
   padding: 10px;
-  font-size: 19px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.05;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-bottom-width: 7px;
-  border-radius: 20px;
+  border: 0;
+  border-radius: 24px;
+  box-shadow: var(--clay);
+  transition: transform var(--ease), box-shadow var(--ease);
 }
 .big .i {
   color: var(--primary-strong);
 }
 .big.primary .i {
   color: #fff;
+}
+.big.primary:disabled .i {
+  color: var(--muted);
 }
 .big small {
   font-size: 13px;
@@ -338,17 +390,20 @@ input[type='checkbox'] {
   color: rgba(255, 255, 255, 0.92);
 }
 .big:active:not(:disabled) {
-  transform: translateY(3px);
-  border-bottom-width: 4px;
+  transform: translateY(4px);
+  box-shadow: var(--clay-down);
 }
 .big:disabled {
-  opacity: 0.55;
-  border-style: dashed;
-  border-bottom-width: 3px;
+  /* pieno, non trasparente: nella barra in basso non deve far vedere cosa c'è sotto */
+  background: var(--track);
+  color: var(--muted);
+  box-shadow: none;
+  outline: 3px dashed var(--edge);
+  outline-offset: -3px;
 }
 .primary {
-  background: var(--primary);
-  border-color: var(--primary-dark);
+  --edge: var(--primary-dark);
+  background: linear-gradient(180deg, #f2703a, var(--primary));
   color: #fff;
 }
 .big.go {
@@ -370,13 +425,13 @@ input[type='checkbox'] {
   font-size: 16px;
   font-weight: 700;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-bottom-width: 5px;
-  border-radius: 14px;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: var(--clay);
 }
 .btn.primary {
+  --edge: var(--primary-dark);
   background: var(--primary-strong);
-  border-color: var(--primary-dark);
   color: #fff;
 }
 .btn.small {
@@ -397,6 +452,7 @@ input[type='checkbox'] {
   background: var(--chip);
   font-size: 15px;
   font-weight: 700;
+  box-shadow: inset 0 -2px 0 rgba(150, 90, 30, 0.12);
 }
 .chip.ok {
   background: var(--chip-ok);
@@ -408,8 +464,9 @@ input[type='checkbox'] {
 .hint {
   background: var(--selected);
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   margin: 8px 0;
+  box-shadow: inset 0 -3px 0 rgba(61, 139, 253, 0.15);
 }
 .safety {
   color: var(--muted);
@@ -445,11 +502,12 @@ input[type='checkbox'] {
   flex-direction: column;
   align-items: center;
   padding: 6px;
-  font-weight: 800;
+  font-weight: 700;
+  line-height: 1.05;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-bottom-width: 6px;
-  border-radius: 18px;
+  border: 3px solid transparent;
+  border-radius: 20px;
+  box-shadow: var(--clay);
 }
 .card canvas {
   width: 100%;
@@ -458,10 +516,14 @@ input[type='checkbox'] {
   aspect-ratio: 240 / 150;
 }
 /* scelta attiva: bordo blu, fondo azzurro e spunta, non solo il colore */
-.card.on,
-.seg .on {
+.card.on {
   border-color: var(--blue);
   background: var(--selected);
+}
+.seg .on {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--edge), 0 4px 10px rgba(150, 90, 30, 0.15);
 }
 .seg .on::before {
   content: '✓ ';
@@ -482,6 +544,60 @@ input[type='checkbox'] {
   color: #fff;
   font-size: 16px;
   line-height: 26px;
+}
+.games {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.game {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--g) 16%, #fff);
+  border: 3px solid transparent;
+  border-radius: 22px;
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--g) 35%, #fff), 0 10px 18px rgba(150, 90, 30, 0.1), inset 0 2px 0 rgba(255, 255, 255, 0.9);
+}
+.game canvas {
+  width: 100%;
+  max-width: 128px;
+  aspect-ratio: 256 / 160;
+}
+/* gioco scelto: bordo del suo colore, si alza un po' e ha la spunta */
+.game.on {
+  border-color: var(--g);
+  background: color-mix(in srgb, var(--g) 26%, #fff);
+  transform: translateY(-3px);
+}
+.game.on::after {
+  content: '✓';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--g);
+  color: #fff;
+  font-size: 16px;
+  line-height: 26px;
+}
+.game:active {
+  transform: translateY(2px);
+}
+@media (max-width: 560px) {
+  .games {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 .two {
   display: grid;
@@ -505,18 +621,23 @@ input[type='checkbox'] {
 .seg {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
+  padding: 5px;
+  background: var(--track);
+  border-radius: 20px;
+  box-shadow: inset 0 2px 5px rgba(150, 90, 30, 0.14);
 }
 .seg button {
   flex: 1;
-  min-height: 48px;
-  padding: 8px 10px;
-  font-size: 17px;
-  font-weight: 800;
-  background: var(--card);
-  border: 3px solid var(--line);
-  border-bottom-width: 5px;
-  border-radius: 14px;
+  min-height: 44px;
+  padding: 6px 10px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 15px;
 }
 .legend {
   display: flex;
@@ -527,14 +648,16 @@ input[type='checkbox'] {
 }
 
 .score-big {
-  font-size: 72px;
+  font-size: 80px;
   font-weight: 800;
-  color: var(--primary-dark);
+  color: var(--primary-strong);
   text-align: center;
   line-height: 1;
+  text-shadow: 0 4px 0 #ffd9b8;
 }
 .score-big small {
   display: block;
+  text-shadow: none;
   font-size: 18px;
   color: var(--muted);
 }
@@ -546,7 +669,7 @@ input[type='checkbox'] {
   color: var(--primary-strong);
   text-align: center;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 8px 0;
 }
 .stats {
@@ -560,8 +683,9 @@ input[type='checkbox'] {
   width: 100%;
   border-collapse: collapse;
   background: var(--card);
-  border-radius: 14px;
+  border-radius: 18px;
   overflow: hidden;
+  box-shadow: var(--clay);
 }
 .rec th,
 .rec td {
@@ -590,10 +714,14 @@ input[type='checkbox'] {
 .field select {
   font: inherit;
   font-size: 17px;
-  padding: 8px;
-  border-radius: 12px;
-  border: 3px solid var(--line);
+  font-weight: 700;
+  padding: 8px 12px;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 0;
   background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--clay);
 }
 .field input[type='range'] {
   width: 100%;
@@ -623,9 +751,9 @@ input[type='checkbox'] {
   padding: 12px 14px;
   font-size: 17px;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-bottom-width: 6px;
-  border-radius: 18px;
+  border: 0;
+  border-radius: 20px;
+  box-shadow: var(--clay);
 }
 .step small {
   color: var(--muted);
@@ -897,9 +1025,10 @@ input[type='checkbox'] {
   font-weight: 800;
   padding: 6px 14px;
   min-height: 52px;
-  border: 3px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
+  border: 0;
+  box-shadow: inset 0 2px 5px rgba(150, 90, 30, 0.15);
+  border-radius: 16px;
+  background: var(--track);
   color: var(--ink);
   user-select: text;
   -webkit-user-select: text;
@@ -933,8 +1062,8 @@ input[type='checkbox'] {
   gap: 14px;
   align-items: center;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-radius: 18px;
+  box-shadow: var(--clay);
+  border-radius: 22px;
   padding: 10px 14px;
 }
 .code-box b {
@@ -971,8 +1100,8 @@ input[type='checkbox'] {
   flex-direction: column;
   gap: 2px;
   background: var(--card);
-  border: 3px solid var(--line);
-  border-radius: 16px;
+  box-shadow: var(--clay);
+  border-radius: 18px;
   padding: 10px 12px;
 }
 .rule .i {
@@ -996,9 +1125,10 @@ input[type='checkbox'] {
   align-items: center;
   gap: 10px;
   background: var(--card);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 6px 10px;
   min-height: 52px;
+  box-shadow: var(--clay);
 }
 .players li.off {
   opacity: 0.55;
@@ -1228,8 +1358,10 @@ input[type='checkbox'] {
   font-size: 18px;
   min-height: 44px;
   padding: 4px 10px;
-  border: 3px solid var(--line);
+  border: 0;
+  box-shadow: inset 0 2px 5px rgba(150, 90, 30, 0.15);
   border-radius: 12px;
+  background: var(--track);
   user-select: text;
   -webkit-user-select: text;
 }

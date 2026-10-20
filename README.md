@@ -6,6 +6,7 @@ Giochi di tiro in realtà aumentata da giocare in casa con il telefono montato s
 
 1. **Tiro al bersaglio**: da sole, bersagli virtuali intorno nella stanza. Funziona offline.
    - **Chiosco del luna park**: tre file di bersagli che scorrono davanti, 20 colpi e un premio alla fine.
+   - **Anatre al volo**: come Duck Hunt, le anatre escono dall'erba e volano a zig zag; se scappano il cane ride.
    - **Tiro al piattello**: i piattelli volano ad arco da un lato all'altro, vanno colpiti prima che ricadano.
    - **Duello nel Far West**: alla campana spunta il bandito Baffone, va colpito prima che dalla sua rivoltella giocattolo esca la bandierina BANG. Vince chi arriva a 3. In Difficile passa anche la signora Rosina, che non va colpita.
    - **Arcade** (per tutti i giochi da soli): si perde un colpo solo quando si sbaglia; nel duello si va avanti finché non si sbaglia.

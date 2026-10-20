@@ -56,6 +56,9 @@ const SOUNDS: Record<string, [number, Synth]> = {
   // tiro al piattello: il lancio della macchina e il piattello che si rompe
   launch: [0.35, (c, o) => { noise(c, o, 0, 0.06, 1.2, 400, 1); tone(c, o, 'sine', 300, 700, 0.02, 0.3, 0.12) }],
   crack: [0.3, (c, o) => { noise(c, o, 0, 0.12, 1.6, 3500, 0.8); noise(c, o, 0.04, 0.15, 0.8, 1800, 0.8) }],
+  // anatre al volo: il qua qua di quella colpita e il cane che ride
+  quack: [0.4, (c, o) => { tone(c, o, 'sawtooth', 520, 380, 0, 0.14, 0.12); tone(c, o, 'sawtooth', 500, 360, 0.18, 0.16, 0.12) }],
+  laugh: [0.8, (c, o) => [0, 0.16, 0.32, 0.48].forEach((t0, i) => tone(c, o, 'triangle', 700 - i * 60, 500 - i * 60, t0, 0.12, 0.25))],
   pop_lattine: [0.4, (c, o) => { [523, 787, 1150].forEach((f) => tone(c, o, 'square', f, f * 0.98, 0, 0.3, 0.07)); noise(c, o, 0, 0.05, 1, 4000, 1) }],
 }
 
