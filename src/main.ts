@@ -41,43 +41,52 @@ let battery = false
 
 function home() {
   const m = mode()
+  const needSensors = m === 'spenti' || m === 'negato'
   render(`
     <header class="top">
       <h1>Laser tag <span>di cartone</span></h1>
-      <div class="me">
-        <label class="lbl">Nome <input data-name maxlength="12" placeholder="Scrivilo qui" value="${esc(settings.name)}" autocomplete="off" /></label>
-        <div class="lbl" role="radiogroup" aria-label="Il tuo colore"><span class="lbl-t">Colore</span>
-          <div class="swatches">${COLORS.map((c, i) => `<button class="sw ${c === settings.color ? 'on' : ''}" data-color="${c}" style="--c:${c}" role="radio" aria-checked="${c === settings.color}" aria-label="Colore ${i + 1}"></button>`).join('')}</div>
-        </div>
-      </div>
+      <nav class="top-nav">
+        <button class="profile" data-profile style="--c:${settings.color}" aria-label="Cambia nome e colore"><i></i>${settings.name ? esc(settings.name) : '<em>Scrivi il tuo nome</em>'}</button>
+        <button class="btn small" data-go="records">${icon('trophy', 20)}Record</button>
+        <button class="btn small icon-only" data-go="settings" aria-label="Impostazioni">${icon('sliders', 20)}</button>
+      </nav>
     </header>
+    ${needSensors ? `<div class="alert">${icon('sensors', 26)}<span><b>Prima di tutto attiva i sensori</b><small>Servono al gioco per sapere dove punti il fucile.</small></span><button class="btn primary" data-sensors>Attiva sensori</button></div>` : ''}
+    ${m === 'nessuno' ? '<div class="alert warn"><span><b>Questo telefono non sa quando ti giri</b><small>Funziona il laser tag; i giochi a bersagli no.</small></span></div>' : ''}
     <div class="home">
       <button class="big primary hero" data-go="solo">${icon('target', 40)}Gioca da sola/o<small>Bersagli, chiosco del luna park, piattelli, anatre e duello nel Far West</small></button>
       <section class="group">
         <h3>Con gli amici</h3>
         <div class="grid">
-          <button class="big" data-go="create">${icon('megaphone', 30)}Crea partita<small>Laser tag e bersagli</small></button>
+          <button class="big" data-go="create">${icon('megaphone', 30)}Crea partita<small>Fai da regista</small></button>
           <button class="big" data-go="join">${icon('enter', 30)}Entra in partita<small>Con il codice o il QR</small></button>
         </div>
       </section>
       <section class="group">
-        <h3>Prima di giocare</h3>
-        <div class="grid tiles">
-          <button class="big" data-go="prepare">${icon('wrench', 28)}Prepara il fucile</button>
-          <button class="big" data-go="print">${icon('printer', 28)}Stampa i marker</button>
-          <button class="big" data-go="records">${icon('trophy', 28)}Record</button>
+        <h3>Il fucile</h3>
+        <div class="grid">
+          <button class="big" data-go="prepare">${icon('wrench', 30)}Prepara il fucile<small>Costruzione e prove</small></button>
+          <button class="big" data-go="print">${icon('printer', 30)}Stampa i marker<small>Per il laser tag</small></button>
         </div>
       </section>
     </div>
-    <p class="safety">Si gioca camminando, non correndo. Prima di iniziare, libera la stanza dagli ostacoli.</p>
-    <div class="chips">
-      <span class="chip ${m === 'giroscopio' || m === 'bussola' ? 'ok' : ''}">${MODE_TEXT[m]}</span>
-      ${m === 'spenti' || m === 'negato' ? `<button class="btn small primary" data-sensors>${icon('sensors', 20)}Attiva sensori</button>` : ''}
-      <span class="chip warn" data-battery ${battery ? '' : 'hidden'}>Batteria sotto il 15%</span>
-      <button class="btn small" data-go="settings">${icon('sliders', 20)}Impostazioni</button>
-    </div>
+    <p class="safety">Si gioca camminando, non correndo. Prima di iniziare, libera la stanza dagli ostacoli.
+      <span class="chip warn" data-battery ${battery ? '' : 'hidden'}>Batteria sotto il 15%</span></p>
     ${isIOS && !standalone ? '<p class="hint">Per giocare a schermo intero: tocca Condividi e poi <b>Aggiungi alla schermata Home</b>, e apri il gioco da lì.</p>' : ''}
+    <dialog class="sheet-me" data-me>
+      <form method="dialog">
+        <h2>Chi gioca?</h2>
+        <label class="lbl">Nome <input data-name maxlength="12" placeholder="Scrivilo qui" value="${esc(settings.name)}" autocomplete="off" /></label>
+        <div class="lbl" role="radiogroup" aria-label="Il tuo colore">Colore
+          <div class="swatches">${COLORS.map((c, i) => `<button type="button" class="sw ${c === settings.color ? 'on' : ''}" data-color="${c}" style="--c:${c}" role="radio" aria-checked="${c === settings.color}" aria-label="Colore ${i + 1}"></button>`).join('')}</div>
+        </div>
+        <button class="btn primary" value="ok">Fatto</button>
+      </form>
+    </dialog>
   `)
+  const dlg = app.querySelector<HTMLDialogElement>('[data-me]')!
+  on('[data-profile]', () => dlg.showModal())
+  dlg.addEventListener('close', home)
   const name = app.querySelector<HTMLInputElement>('[data-name]')!
   name.addEventListener('input', () => {
     settings.name = name.value.trim()

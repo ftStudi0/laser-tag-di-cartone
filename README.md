@@ -4,6 +4,10 @@ Giochi di tiro in realtà aumentata da fare in casa. Il telefono si monta su un 
 
 È una web app: non serve installare niente dagli store e non servono account. È nata per due bambine di 9 e 10 anni: un adulto costruisce i fucili e fa da regista.
 
+![Anatre al volo: il gioco in azione](docs/img/demo.gif)
+
+Il [video completo](docs/video/demo.mp4) (un minuto) mostra il menu, le anatre al volo, il chiosco del luna park e il duello nel Far West. È registrato sul computer, con una stanza disegnata al posto della fotocamera.
+
 ![Il menu del gioco](docs/img/menu.png)
 
 ## Cosa si può fare
